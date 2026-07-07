@@ -22,6 +22,7 @@ from expense_review_engine import (
     notes_to_rows,
     review_files,
 )
+from export_review_package import export_review_package
 from llm_assistant import LLMConfig, test_connection
 
 # ── page config ──────────────────────────────────────────────────
@@ -303,6 +304,7 @@ def render_results(
     summary: ReviewSummary,
     elapsed_s: float,
     llm_status_note: str = "",
+    bundle: dict | None = None,
 ) -> None:
     """展示 Review 完成后的结果区域。"""
     rows = notes_to_rows(notes)
@@ -346,24 +348,43 @@ def render_results(
             use_container_width=True,
         )
     with dl2:
-        # CSV also accessible as data fallback
-        st.download_button(
-            "📥 下载标注底稿指引",
-            data=notes_to_csv(notes),
-            file_name="review_notes_backup.csv",
-            mime="text/csv",
-            use_container_width=True,
-            disabled=True,  # enabled after export integration
-        )
+        if bundle and bundle.get("annotated_workbook"):
+            ann_bytes = bundle["annotated_workbook"].read_bytes()
+            st.download_button(
+                "📥 下载标注底稿副本 (.xlsx)",
+                data=ann_bytes,
+                file_name=bundle["annotated_workbook"].name,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+            )
+        else:
+            st.download_button(
+                "📥 下载标注底稿副本",
+                data=b"",
+                file_name="annotated.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                disabled=True,
+            )
     with dl3:
-        st.download_button(
-            "📥 下载 HTML 报告",
-            data="<p>Report placeholder</p>",
-            file_name="review_report.html",
-            mime="text/html",
-            use_container_width=True,
-            disabled=True,  # enabled after export integration
-        )
+        if bundle and bundle.get("html_report"):
+            html_bytes = bundle["html_report"].read_bytes()
+            st.download_button(
+                "📥 下载 HTML 报告",
+                data=html_bytes,
+                file_name=bundle["html_report"].name,
+                mime="text/html",
+                use_container_width=True,
+            )
+        else:
+            st.download_button(
+                "📥 下载 HTML 报告",
+                data=b"",
+                file_name="review_report.html",
+                mime="text/html",
+                use_container_width=True,
+                disabled=True,
+            )
 
     # tabs
     high_rows = [r for r in rows if r["risk_level"] == "High"]
@@ -420,8 +441,8 @@ def main() -> None:
 
     # show previous results if available
     if st.session_state["results"] is not None and not run_clicked:
-        notes, summary, elapsed_s, llm_note = st.session_state["results"]
-        render_results(notes, summary, elapsed_s, llm_note)
+        notes, summary, elapsed_s, llm_note, bundle = st.session_state["results"]
+        render_results(notes, summary, elapsed_s, llm_note, bundle)
         if main_path:
             st.divider()
             st.caption("上传新文件后点击「开始 Review」可重新运行。")
@@ -471,6 +492,14 @@ def main() -> None:
             st.error(f"Review 运行失败：{exc}")
             status.update(label="Review 失败", state="error")
             return
+
+        # Generate export bundle
+        bundle = None
+        try:
+            st.write("📊 生成报告与标注底稿...")
+            bundle = export_review_package(notes, summary, files=files)
+        except Exception as exc:
+            st.warning(f"导出生成部分失败：{exc}（Review Notes 仍可用）")
 
         # Build a step-by-step log based on the actual notes
         notes_by_rule: dict[str, list[ReviewNote]] = {}
@@ -530,11 +559,11 @@ def main() -> None:
         llm_note = "LLM 已启用"
 
     # persist results
-    st.session_state["results"] = (notes, summary, elapsed_s, llm_note)
+    st.session_state["results"] = (notes, summary, elapsed_s, llm_note, bundle)
     st.session_state["run_log"] = run_log
 
     # render
-    render_results(notes, summary, elapsed_s, llm_note)
+    render_results(notes, summary, elapsed_s, llm_note, bundle)
 
 
 if __name__ == "__main__":
