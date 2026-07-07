@@ -1005,18 +1005,7 @@ def _is_expense_parent_account(account: str) -> bool:
 
 def review_trial_balance(tb_path: Path | None, main_wb, main_path: Path, llm_config: LLMConfig | None = None) -> list[ReviewNote]:
     if not tb_path or not tb_path.exists():
-        return [
-            note(
-                "Low",
-                main_path,
-                "辅助资料",
-                "科目余额表",
-                "未上传科目余额表",
-                "未上传科目余额表，无法辅助验证销售费用、管理费用 BKD 科目列示是否完整。",
-                "如现场资料允许，请上传科目余额表，用于比对 BKD 是否覆盖全部销售费用、管理费用科目。",
-                "辅助资料完整性",
-            )
-        ]
+        return []  # 用户未上传，静默跳过
 
     bkd_accounts = collect_bkd_accounts(main_wb)
     wb = load_workbook(tb_path)
@@ -1089,18 +1078,7 @@ def review_trial_balance(tb_path: Path | None, main_wb, main_path: Path, llm_con
 
 def review_general_ledger(gl_path: Path | None, main_wb, main_path: Path, llm_config: LLMConfig | None = None) -> list[ReviewNote]:
     if not gl_path or not gl_path.exists():
-        return [
-            note(
-                "Low",
-                main_path,
-                "辅助资料",
-                "序时账",
-                "未上传序时账",
-                "未上传序时账，无法辅助验证是否存在特殊费用、大额异常费用或期末集中入账未被 BKD 分析覆盖。",
-                "如现场资料允许，请上传序时账，用于补充识别法律、诉讼、咨询、中介、赔偿、罚款等费用线索。",
-                "辅助资料完整性",
-            )
-        ]
+        return []  # 用户未上传，静默跳过
 
     wb = load_workbook(gl_path)
     ws = wb[wb.sheetnames[0]]
@@ -1180,6 +1158,11 @@ def review_files(
     llm_config: LLMConfig | None = None,
 ) -> tuple[ReviewSummary, list[ReviewNote]]:
     paths = dict(DEFAULT_FILES)
+    # 当用户通过 UI 上传文件时，辅助资料默认不加载（不自动回落资料库）
+    user_upload_mode = bool(files and files.get("workpapers"))
+    if user_upload_mode:
+        paths["trial_balance"] = None
+        paths["general_ledger"] = None
     if files:
         for key, value in files.items():
             if value is None and key in {"trial_balance", "general_ledger"}:
