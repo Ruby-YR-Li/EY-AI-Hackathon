@@ -188,8 +188,71 @@ def export_annotated_workbook(
         for cell in row:
             cell.alignment = openpyxl.styles.Alignment(wrap_text=True, vertical="top")
 
+    # ── AI Review 执行日志 sheet ──
+    _add_execution_log_sheet(wb, notes)
+
     wb.save(output_path)
     return output_path
+
+
+EXEC_LOG_SHEET = "AI Review 执行日志"
+
+
+def _add_execution_log_sheet(wb, notes: list[ReviewNote]) -> None:
+    """在标注底稿中添加质检点执行日志 sheet。"""
+    if EXEC_LOG_SHEET in wb.sheetnames:
+        del wb[EXEC_LOG_SHEET]
+    ws = wb.create_sheet(EXEC_LOG_SHEET)
+
+    # Aggregate notes by issue_type
+    from collections import Counter
+    type_counts: dict[str, Counter] = {}
+    type_examples: dict[str, str] = {}
+    for n in notes:
+        if n.issue_type not in type_counts:
+            type_counts[n.issue_type] = Counter()
+            type_examples[n.issue_type] = n.review_note[:80]
+        type_counts[n.issue_type][n.risk_level] += 1
+
+    headers = ["规则名称", "High", "Medium", "Low", "总计", "示例"]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+
+    order_rank = {"High": 1, "Medium": 2, "Low": 3}
+    sorted_types = sorted(
+        type_counts.items(),
+        key=lambda item: (
+            -item[1].get("High", 0),
+            -item[1].get("Medium", 0),
+            item[0],
+        )
+    )
+    for issue_type, counts in sorted_types:
+        total = sum(counts.values())
+        ws.append([
+            issue_type,
+            counts.get("High", 0),
+            counts.get("Medium", 0),
+            counts.get("Low", 0),
+            total,
+            type_examples.get(issue_type, ""),
+        ])
+        # Color High count red
+        row_idx = ws.max_row
+        high_cell = ws.cell(row_idx, 2)
+        if high_cell.value and high_cell.value > 0:
+            high_cell.font = Font(color="B42318", bold=True)
+
+    widths = {"A": 32, "B": 10, "C": 10, "D": 10, "E": 10, "F": 60}
+    for col, width in widths.items():
+        ws.column_dimensions[col].width = width
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+    for row in ws.iter_rows(min_row=2):
+        for cell in row:
+            cell.alignment = openpyxl.styles.Alignment(wrap_text=True, vertical="top")
 
 
 def export_html_report(

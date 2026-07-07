@@ -808,33 +808,93 @@ def review_tod_negative_handling(tod_wb, tod_path: Path) -> list[ReviewNote]:
 
 
 def review_missing_sheets(wb, file: Path) -> list[ReviewNote]:
-    """对照标准模板检查主底稿是否缺失关键 sheet。"""
+    """对照标准模板检查主底稿是否缺失关键 sheet，并与汇总页执行状态联动。"""
     notes: list[ReviewNote] = []
     visible = {s for s in wb.sheetnames if not s.startswith(INTERNAL_SHEET_PREFIXES)}
     # 判断是否为主底稿（有 Lead 或 汇总）
     if "Uexp.00 Lead" not in wb.sheetnames and "汇总" not in wb.sheetnames:
         return notes
 
+    # 读取汇总页执行状态，用于联动判断风险等级
+    summary_executed: dict[str, str] = {}  # sheet_name -> 执行状态("是"/"否"/"")
+    if "汇总" in wb.sheetnames:
+        ws = wb["汇总"]
+        for row in range(2, ws.max_row + 1):
+            procedure = cell_text(ws.cell(row, 6).value)  # F列：程序页
+            execution = cell_text(ws.cell(row, 7).value)   # G列：是否执行
+            if procedure:
+                summary_executed[procedure] = execution
+
     missing = STANDARD_SHEETS_MAIN - visible
+    # sheet 名称到汇总页程序名的映射
+    sheet_to_program = {
+        "VC&VD.01.2 详细测试 TOD": "VC&VD.01.2 详细测试 TOD",
+        "VD.01.3 复核法律费用": "VD.01.3 复核法律费用",
+        "VC&VD.01.4 截止性测试": "VC&VD.01.4 截止性测试",
+    }
+
     for sheet in sorted(missing):
-        if sheet in ("VC&VD.01.2 详细测试 TOD",):
+        # 汇总页联动：如果缺失的sheet在汇总页标记为"是"执行，风险升级为 High
+        program_name = sheet_to_program.get(sheet, "")
+        exec_status = summary_executed.get(sheet, summary_executed.get(program_name, ""))
+        is_marked_executed = (exec_status == "是")
+
+        if sheet in ("汇总", "Uexp.00 Lead"):
+            # 核心结构页缺失 -> High
             notes.append(
                 note(
                     "High", file, sheet, "Workbook",
+                    "缺少核心底稿页",
+                    f"主底稿缺少核心结构页「{sheet}」，无法完成对应程序的 Review。",
+                    f"补充「{sheet}」sheet；确认是否使用正确的标准底稿模板。",
+                    "标准底稿模板结构",
+                )
+            )
+        elif sheet in ("VC.00 销售费用BKD", "VD.00 管理费用BKD"):
+            # BKD 页缺失 -> High（费用分析的基础）
+            notes.append(
+                note(
+                    "High", file, sheet, "Workbook",
+                    "缺少费用 BKD 页",
+                    f"主底稿缺少「{sheet}」，无法执行费用波动分析程序。",
+                    f"补充「{sheet}」sheet，或确认该费用类别是否在本审计范围内。",
+                    "标准底稿模板 + SOP BKD 分析",
+                )
+            )
+        elif sheet in ("VC&VD.01.2 详细测试 TOD",):
+            risk = "High" if is_marked_executed else "Medium"
+            suffix = f"且汇总页标记该程序为「是」执行" if is_marked_executed else ""
+            notes.append(
+                note(
+                    risk, file, sheet, "Workbook",
                     "缺少标准底稿页",
-                    f"主底稿缺少「{sheet}」，但汇总页可能标记该程序为执行。标准底稿模板包含此页。",
+                    f"主底稿缺少「{sheet}」{suffix}。标准底稿模板包含此页。",
                     f"补充「{sheet}」sheet，或确认程序是否在其他底稿（如 TOD 底稿）中执行并建立交叉索引。",
                     "标准底稿模板 + SOP 汇总页易错点",
                 )
             )
         elif sheet in ("VD.01.3 复核法律费用",):
+            risk = "High" if is_marked_executed else "Medium"
+            suffix = f"且汇总页标记该程序为「是」执行" if is_marked_executed else ""
             notes.append(
                 note(
-                    "Medium", file, sheet, "Workbook",
+                    risk, file, sheet, "Workbook",
                     "缺少标准底稿页",
-                    f"主底稿缺少「{sheet}」。即使该程序不执行，SOP 也建议保留页面并记录不执行原因。",
+                    f"主底稿缺少「{sheet}」{suffix}。即使程序不执行，SOP 也建议保留该页并记录原因。",
                     f"补充「{sheet}」sheet，如不执行则记录具体理由和替代程序依据。",
                     "标准底稿模板 + SOP 汇总页易错点",
+                )
+            )
+        elif sheet in ("VC&VD.01.4 截止性测试",):
+            risk = "High" if is_marked_executed else "Medium"
+            suffix = f"且汇总页标记该程序为「是」执行" if is_marked_executed else ""
+            notes.append(
+                note(
+                    risk, file, sheet, "Workbook",
+                    "缺少标准底稿页",
+                    f"主底稿缺少「{sheet}」{suffix}。截止性测试是费用审计的关键程序。",
+                    f"补充「{sheet}」sheet 并完成截止性测试，或在汇总页说明不执行的具体理由。",
+                    "标准底稿模板 + SOP 截止性测试",
                 )
             )
     return notes
