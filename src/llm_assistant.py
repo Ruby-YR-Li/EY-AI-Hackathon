@@ -124,3 +124,51 @@ def confidence_text(value: object) -> str:
         return f"{float(value):.2f}"
     except Exception:
         return ""
+
+
+def test_connection(config: LLMConfig) -> dict:
+    """测试 DeepSeek API 连通性。
+
+    发送一个极轻量的 ping 请求（max_tokens=1），返回连通状态和延迟。
+
+    Returns:
+        {"ok": bool, "latency_ms": float, "model": str, "error": str}
+    """
+    import time
+
+    result = {"ok": False, "latency_ms": 0.0, "model": config.model or DEFAULT_DEEPSEEK_MODEL, "error": ""}
+
+    if not config.is_available:
+        result["error"] = "API Key 未配置"
+        return result
+
+    payload = {
+        "model": config.model or DEFAULT_DEEPSEEK_MODEL,
+        "messages": [{"role": "user", "content": "ping"}],
+        "max_tokens": 1,
+        "temperature": 0,
+    }
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    request = urllib.request.Request(
+        _endpoint(config.base_url),
+        data=data,
+        headers={
+            "Authorization": f"Bearer {config.effective_api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        t0 = time.perf_counter()
+        with urllib.request.urlopen(request, timeout=10) as response:
+            response.read()
+        result["latency_ms"] = round((time.perf_counter() - t0) * 1000, 1)
+        result["ok"] = True
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")[:200]
+        result["error"] = f"HTTP {exc.code}: {body}"
+    except Exception as exc:
+        result["error"] = str(exc)
+
+    return result
