@@ -638,6 +638,208 @@ def review_tod(wb, file: Path) -> list[ReviewNote]:
     return notes
 
 
+# ---------------------------------------------------------------------------
+#  NEW rules from Plan B
+# ---------------------------------------------------------------------------
+
+# 标准 VC&VD 底稿应包含的 sheet 集合
+STANDARD_SHEETS_MAIN = {
+    "汇总",
+    "Uexp.00 Lead",
+    "VC.00 销售费用BKD",
+    "VD.00 管理费用BKD",
+    "VC&VD.01.2 详细测试 TOD",
+    "VD.01.3 复核法律费用",
+    "VC&VD.01.4 截止性测试",
+}
+NON_EXPENSE_POPULATIONS = ("制造费用", "研发支出")
+
+
+def review_bkd_currency_unit(wb, file: Path) -> list[ReviewNote]:
+    """检查 BKD 表头货币/单位是否显示为 IFRS 而非 CNY。"""
+    notes: list[ReviewNote] = []
+    lead_currency = ""
+    if "Uexp.00 Lead" in wb.sheetnames:
+        lead_currency = cell_text(wb["Uexp.00 Lead"]["C8"].value).upper()
+
+    for sheet in ("VC.00 销售费用BKD", "VD.00 管理费用BKD"):
+        if sheet not in wb.sheetnames:
+            continue
+        ws = wb[sheet]
+        currency_label = cell_text(ws.cell(28, 5).value)
+        if "IFRS" in currency_label.upper():
+            notes.append(
+                note(
+                    "High", file, sheet, "Row 28",
+                    "BKD 货币/单位显示异常",
+                    f"{sheet} 表头「货币/单位」显示为「IFRS」，IFRS 是会计准则而非货币。Lead 页 C8 记录为「{lead_currency}」。",
+                    "将货币/单位更正为 CNY/RMB/人民币，与 Lead C8 保持一致。",
+                    "SOP - Lead 基础信息 + BKD 易错点",
+                )
+            )
+    return notes
+
+
+def review_bkd_prior_year(wb, file: Path) -> list[ReviewNote]:
+    """检测上期审定数列是否出现极小比例值（疑似公式错误）。"""
+    notes: list[ReviewNote] = []
+    for sheet in ("VC.00 销售费用BKD", "VD.00 管理费用BKD"):
+        if sheet not in wb.sheetnames:
+            continue
+        ws = wb[sheet]
+        header_row = find_header_row(ws, "科目名称")
+        if not header_row:
+            continue
+        suspicious_rows: list[str] = []
+        for row in range(header_row + 1, min(header_row + 30, ws.max_row + 1)):
+            py_val = ws.cell(row, 10).value   # 上期审定数 (J列)
+            cy_val = ws.cell(row, 7).value    # 本期审定数 (G列)
+            # 上期值为极小比例(<0.1)但本期金额>100，大概率是公式 link 到了结构比列
+            if (py_val is not None and isinstance(py_val, float) and abs(py_val) < 0.1
+                    and cy_val is not None and isinstance(cy_val, (int, float)) and abs(cy_val) > 100):
+                account = cell_text(ws.cell(row, 4).value)
+                suspicious_rows.append(f"D{row} {account}")
+        if len(suspicious_rows) >= 3:
+            notes.append(
+                note(
+                    "Medium", file, sheet, "上期审定数列",
+                    "上期审定数疑似公式错误",
+                    f"{sheet} 中存在 {len(suspicious_rows)} 行上期审定数为极小比例值（<0.1），疑似公式 link 到了结构比列。行：{', '.join(suspicious_rows[:5])}。",
+                    "检查上期审定数公式/链接，确保指向的是上期实际金额而非结构比。与上年底稿期末审定数核对一致。",
+                    "SOP - BKD 易错点：若需插行时相关列公式未拉全",
+                )
+            )
+    return notes
+
+
+def _find_tod_detail_sheet(wb) -> str | None:
+    """在 workbook 中查找 TOD 明细 sheet（包含预审/剩余期间等关键词）。"""
+    for s in wb.sheetnames:
+        if not s.startswith(INTERNAL_SHEET_PREFIXES):
+            if "TOD" in s and ("预审" in s or "剩余期间" in s or "测试" in s):
+                return s
+    return None
+
+
+def review_tod_population_scope(tod_wb, tod_path: Path) -> list[ReviewNote]:
+    """检查 TOD 样本总体是否混入了制造费用/研发支出。"""
+    notes: list[ReviewNote] = []
+    if not tod_wb:
+        return notes
+    sheet = _find_tod_detail_sheet(tod_wb)
+    if not sheet:
+        return notes
+    ws = tod_wb[sheet]
+    for row in range(5, min(ws.max_row + 1, 25)):
+        name = cell_text(ws.cell(row, 4).value)
+        if any(pop in name for pop in NON_EXPENSE_POPULATIONS):
+            amount = cell_text(ws.cell(row, 6).value)
+            notes.append(
+                note(
+                    "High", tod_path, sheet, f"D{row}",
+                    "样本总体包含非同类交易类别",
+                    f"TOD 样本总体中包含「{name}」（金额约 {amount}），SOP 禁止将风险不同的制造费用/研发支出与销售/管理费用合并抽样。",
+                    "将制造费用和研发支出从费用 TOD 样本总体中剔除，在对应科目底稿中单独执行 TOD。",
+                    "SOP - TOD 易错点：将风险不同的制造费用与销售费用、管理费用合并抽样",
+                )
+            )
+    return notes
+
+
+def review_tod_key_items(tod_wb, tod_path: Path) -> list[ReviewNote]:
+    """检查 TOD 关键项(KI)数量和金额是否全为 0。"""
+    notes: list[ReviewNote] = []
+    if not tod_wb:
+        return notes
+    sheet = _find_tod_detail_sheet(tod_wb)
+    if not sheet:
+        return notes
+    ws = tod_wb[sheet]
+    # 在关键项区域附近扫描数值
+    ki_values: list[float] = []
+    for row in range(30, min(ws.max_row + 1, 55)):
+        for col in (6, 8):
+            v = as_number(ws.cell(row, col).value)
+            if v and v != 0:
+                ki_values.append(v)
+    if not ki_values:
+        notes.append(
+            note(
+                "High", tod_path, sheet, "关键项区域",
+                "TOD 关键项(KI)全部为零",
+                "TOD 底稿中定量/定性关键项数量和金额均为 0。根据 SOP，性质特殊的费用（如法律/咨询/中介费用）应选为定性关键项单独检查。",
+                "1) 确认测试阈值（取发生/计量/列报认定中最小 TT）；2) 将 >TT 的项选为定量 KI；3) 将咨询费、中介服务费等性质特殊费用选为定性 KI。",
+                "SOP - TOD 关键项易错点：性质特殊的项未作为关键样本",
+            )
+        )
+    return notes
+
+
+def review_tod_negative_handling(tod_wb, tod_path: Path) -> list[ReviewNote]:
+    """检查负值分析中「是否抽样」决策是否缺失。"""
+    notes: list[ReviewNote] = []
+    if not tod_wb:
+        return notes
+    sheet = _find_tod_detail_sheet(tod_wb)
+    if not sheet:
+        return notes
+    ws = tod_wb[sheet]
+    # 扫描负值分析区域，最多输出 2 条
+    neg_note_count = 0
+    for row in range(70, min(ws.max_row + 1, 105)):
+        category = cell_text(ws.cell(row, 3).value)
+        amount_val = cell_text(ws.cell(row, 4).value)
+        decision = cell_text(ws.cell(row, 5).value)
+        if not category or not amount_val:
+            continue
+        # 仅当分类名称包含"性质"、有金额、但无抽样决策时触发
+        if "性质" in category and not decision and neg_note_count < 2:
+            notes.append(
+                note(
+                    "High", tod_path, sheet, f"D{row}",
+                    "负值处理决策缺失",
+                    f"负值分析表「{category}」金额 {amount_val} 的「是否抽样」列为空，跳过决策步骤。",
+                    "根据负值绝对值是否超过 TT、性质是否特殊，判断是否需抽样检查，并记录决策。",
+                    "SOP - TOD 负值检查易错点：未对已剔除的金额重大或性质特殊的负值进行检查",
+                )
+            )
+            neg_note_count += 1
+    return notes
+
+
+def review_missing_sheets(wb, file: Path) -> list[ReviewNote]:
+    """对照标准模板检查主底稿是否缺失关键 sheet。"""
+    notes: list[ReviewNote] = []
+    visible = {s for s in wb.sheetnames if not s.startswith(INTERNAL_SHEET_PREFIXES)}
+    # 判断是否为主底稿（有 Lead 或 汇总）
+    if "Uexp.00 Lead" not in wb.sheetnames and "汇总" not in wb.sheetnames:
+        return notes
+
+    missing = STANDARD_SHEETS_MAIN - visible
+    for sheet in sorted(missing):
+        if sheet in ("VC&VD.01.2 详细测试 TOD",):
+            notes.append(
+                note(
+                    "High", file, sheet, "Workbook",
+                    "缺少标准底稿页",
+                    f"主底稿缺少「{sheet}」，但汇总页可能标记该程序为执行。标准底稿模板包含此页。",
+                    f"补充「{sheet}」sheet，或确认程序是否在其他底稿（如 TOD 底稿）中执行并建立交叉索引。",
+                    "标准底稿模板 + SOP 汇总页易错点",
+                )
+            )
+        elif sheet in ("VD.01.3 复核法律费用",):
+            notes.append(
+                note(
+                    "Medium", file, sheet, "Workbook",
+                    "缺少标准底稿页",
+                    f"主底稿缺少「{sheet}」。即使该程序不执行，SOP 也建议保留页面并记录不执行原因。",
+                    f"补充「{sheet}」sheet，如不执行则记录具体理由和替代程序依据。",
+                    "标准底稿模板 + SOP 汇总页易错点",
+                )
+            )
+    return notes
+
+
 def collect_bkd_accounts(wb) -> set[str]:
     accounts: set[str] = set()
     for sheet in ("VC.00 销售费用BKD", "VD.00 管理费用BKD"):
@@ -906,7 +1108,7 @@ def make_summary(notes: list[ReviewNote], program_rows: int, checklist_rows: int
         medium_count=sum(1 for n in notes if n.risk_level == "Medium"),
         low_count=sum(1 for n in notes if n.risk_level == "Low"),
         sheets_impacted=len({(n.file, n.sheet) for n in notes}),
-        rules_run=8,
+        rules_run=14,
         program_rows=program_rows,
         checklist_rows=checklist_rows,
     )
@@ -943,12 +1145,18 @@ def review_files(
     notes.extend(special_notes)
     notes.extend(review_legal_program_consistency(main_wb, main_path, special_notes))
     notes.extend(review_bkd_notes(main_wb, main_path))
+    notes.extend(review_bkd_currency_unit(main_wb, main_path))
+    notes.extend(review_bkd_prior_year(main_wb, main_path))
     notes.extend(review_cutoff(main_wb, main_path))
     if tod_path:
         tod_wb = load_workbook(tod_path)
         notes.extend(review_tod(tod_wb, tod_path))
+        notes.extend(review_tod_population_scope(tod_wb, tod_path))
+        notes.extend(review_tod_key_items(tod_wb, tod_path))
+        notes.extend(review_tod_negative_handling(tod_wb, tod_path))
     else:
         notes.extend(review_missing_tod(main_path))
+    notes.extend(review_missing_sheets(main_wb, main_path))
     notes.extend(review_trial_balance(paths.get("trial_balance"), main_wb, main_path, llm_config))  # type: ignore[arg-type]
     notes.extend(review_general_ledger(paths.get("general_ledger"), main_wb, main_path, llm_config))  # type: ignore[arg-type]
 
