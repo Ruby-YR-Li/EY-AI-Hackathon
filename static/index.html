@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI审计底稿Review助手</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="spotlight" id="spotlight" aria-hidden="true"></div>
+
+    <header class="site-header" id="hero">
+      <nav class="top-nav scroll-reveal">
+        <div class="nav-brand">
+          <div class="brand-emblem" aria-hidden="true">
+            <svg class="emblem-tree" viewBox="0 0 48 64" aria-hidden="true">
+              <path d="M24 4 L34 22 H28 L32 36 H20 L24 52 L16 36 H12 L16 22 H10 Z" fill="currentColor" />
+            </svg>
+            <span class="emblem-name">Audit Review</span>
+          </div>
+          <div class="nav-brand-text">
+            <strong>FSO Audit CoE</strong>
+            <small>VCVD · Built-in SOP</small>
+          </div>
+        </div>
+        <div class="nav-links">
+          <a href="#hero">概览</a>
+          <a href="#why">核心能力</a>
+          <a href="#workspace">工作台</a>
+          <a href="#results">Review Notes</a>
+        </div>
+        <div class="nav-contact">
+          <span class="contact-item">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm.5-13h-1v6l5.25 3.15.75-1.23-4.5-2.67Z"/></svg>
+            Built-in VCVD SOP
+          </span>
+        </div>
+        <div class="status-pill" id="statusPill">Ready</div>
+      </nav>
+
+      <section class="hero-banner">
+        <div class="hero-bg" aria-hidden="true"></div>
+        <div class="hero-overlay" aria-hidden="true"></div>
+        <div class="hero-content scroll-reveal">
+          <div class="hero-emblem">
+            <div class="hero-oval">
+              <svg class="hero-tree" viewBox="0 0 48 64" aria-hidden="true">
+                <path d="M24 4 L34 22 H28 L32 36 H20 L24 52 L16 36 H12 L16 22 H10 Z" fill="currentColor" />
+              </svg>
+              <span class="hero-oval-title">Audit Review</span>
+              <span class="hero-oval-sub">FSO · VCVD</span>
+            </div>
+          </div>
+          <span class="eyebrow script-accent">Embark on a journey through precision</span>
+          <h1>AI Audit Review Solutions</h1>
+          <p class="hero-subtitle">Your Trusted VCVD Review Partner</p>
+          <p class="hero-lead">
+            内置 VCVD 程序清单与易错点规则，自动识别缺失内容与逻辑问题，输出可定位的 Review Notes。大模型润色为可选项，职业判断仍由 Reviewer 完成。
+          </p>
+          <div class="hero-actions">
+            <a class="btn-cta" href="#workspace">开始 Review</a>
+            <button class="btn-outline" type="button" id="heroHealthBtn">检查服务</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="curve-divider curve-divider--down" aria-hidden="true"></div>
+
+      <section class="services-band scroll-reveal" aria-label="核心服务">
+        <article class="service-card">
+          <div class="service-icon">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M24 14v10l7 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>底稿齐套检查</h3>
+          <p>自动识别 U_exp、TOD 等底稿缺失项与完整性问题</p>
+        </article>
+        <article class="service-card">
+          <div class="service-icon">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <rect x="10" y="8" width="28" height="32" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M16 18h16M16 24h16M16 30h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>VCVD 规则引擎</h3>
+          <p>内置 SOP Checklist，覆盖重点审计程序与逻辑引用检查</p>
+        </article>
+        <article class="service-card">
+          <div class="service-icon">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <path d="M8 36l12-16 8 8 12-20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="36" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <h3>单元格级定位</h3>
+          <p>精确输出 Sheet + Cell 位置，便于 Senior 快速复核整改</p>
+        </article>
+        <article class="service-card">
+          <div class="service-icon">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <path d="M12 10h24v28H12z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M18 18h12M18 24h12M18 30h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>Review Notes 输出</h3>
+          <p>结构化问题摘要、审计风险与建议修改，支持导出与高亮</p>
+        </article>
+        <div class="hero-stage" aria-hidden="true">
+          <strong id="heroMetricHigh">0</strong>
+          <strong id="heroMetricTotal">0</strong>
+        </div>
+      </section>
+    </header>
+
+    <section class="why-section scroll-reveal" id="why">
+      <div class="why-inner">
+        <div class="why-copy">
+          <span class="section-label">Core Capabilities</span>
+          <h2>Why Choose Us</h2>
+          <p class="script-accent why-tagline">Precision meets professional judgment</p>
+          <p>以规则引擎保障现场稳定性，以 VCVD 专业知识沉淀审计经验，让 Review 更高效、更可追溯。</p>
+          <div class="why-features">
+            <article class="why-item">
+              <div class="why-icon">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="16" cy="16" r="4" fill="currentColor"/></svg>
+              </div>
+              <div>
+                <h4>规则引擎</h4>
+                <p>基于 VCVD SOP 与易错点清单，稳定输出可复核的 Review Notes。</p>
+              </div>
+            </article>
+            <article class="why-item">
+              <div class="why-icon">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 16h16M16 8v16" stroke="currentColor" stroke-width="1.5"/></svg>
+              </div>
+              <div>
+                <h4>全局覆盖</h4>
+                <p>支持 TB / JE 交叉核对、逻辑引用检查与多底稿联合分析。</p>
+              </div>
+            </article>
+            <article class="why-item">
+              <div class="why-icon">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M16 10v8l5 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </div>
+              <div>
+                <h4>可靠交付</h4>
+                <p>LLM 仅作可选润色，核心判断与证据链始终由 Reviewer 掌控。</p>
+              </div>
+            </article>
+          </div>
+          <div class="palette-row" aria-label="品牌色板">
+            <span class="swatch" style="--swatch: #1a1a1a" title="Charcoal"></span>
+            <span class="swatch" style="--swatch: #e8e4db" title="Cream"></span>
+            <span class="swatch" style="--swatch: #d9d9d9" title="Warm Grey"></span>
+            <span class="swatch" style="--swatch: #4a5d4e" title="Moss Green"></span>
+            <span class="swatch" style="--swatch: #6b5b4f" title="Earth Brown"></span>
+          </div>
+        </div>
+        <div class="why-visual">
+          <div class="why-image"></div>
+          <div class="why-stats">
+            <div><small>高风险</small><strong id="whyMetricHigh">0</strong></div>
+            <div><small>问题总数</small><strong id="whyMetricTotal">0</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="curve-divider curve-divider--up" aria-hidden="true"></div>
+
+    <section class="about-section scroll-reveal">
+      <div class="about-inner">
+        <div class="about-visual">
+          <div class="about-photo"></div>
+          <div class="about-accent">
+            <svg viewBox="0 0 200 200" aria-hidden="true">
+              <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+              <circle cx="100" cy="100" r="50" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+              <circle cx="100" cy="100" r="20" fill="currentColor" opacity="0.6"/>
+            </svg>
+          </div>
+        </div>
+        <div class="about-copy">
+          <span class="section-label">About the Solution</span>
+          <h2>About Us</h2>
+          <p>
+            AI 审计底稿 Review 助手面向 FSO Audit CoE 的 VCVD 复核场景，将多年审计实务中的程序清单、易错点与交叉核对逻辑沉淀为可执行的规则引擎。
+          </p>
+          <p>
+            系统在上传底稿后自动完成完整性检查、重点程序核对与逻辑引用验证，并以 Sheet + Cell 粒度输出 Review Notes。Reviewer 可据此快速定位问题、评估风险并推动整改，显著提升复核效率与一致性。
+          </p>
+          <div class="about-tags">
+            <span class="chip">内置 SOP Checklist</span>
+            <span class="chip">TB / JE 交叉核对</span>
+            <span class="chip">单元格级定位</span>
+            <span class="chip">LLM 可选增强</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="curve-divider curve-divider--workspace" aria-hidden="true"></div>
+
+    <main class="shell">
+      <section class="workspace scroll-reveal" id="workspace">
+        <aside class="side panel-card">
+          <div class="panel-title">
+            <span class="section-label">Upload</span>
+            <h2>材料上传</h2>
+            <p>主底稿必填；TB/JE 与程序要求可选</p>
+          </div>
+
+          <form id="uploadForm" class="upload-panel">
+            <label class="file-drop">
+              <input id="workpaperInput" name="workpapers" type="file" multiple accept=".xlsx" />
+              <span class="file-icon">
+                <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M18 4H8a2 2 0 0 0-2 2v20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10Z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M18 4v6h6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+              </span>
+              <span class="file-title">选择底稿</span>
+              <span id="workpaperCount" class="file-meta">可多选 U_exp、TOD 等 Excel</span>
+            </label>
+
+            <div class="support-pickers">
+              <label class="mini-drop">
+                <span>TB 科目余额表</span>
+                <input id="tbInput" name="tb" type="file" accept=".xlsx" />
+              </label>
+              <label class="mini-drop">
+                <span>JE 序时账</span>
+                <input id="jeInput" name="je" type="file" accept=".xlsx" />
+              </label>
+              <label class="mini-drop">
+                <span>程序要求（可选）</span>
+                <input id="programInput" name="programs" type="file" multiple accept=".docx,.md" />
+                <small>默认使用内置 VCVD SOP</small>
+              </label>
+            </div>
+
+            <div class="button-row">
+              <button class="btn-primary" type="submit">分析上传</button>
+              <button class="btn-secondary" type="button" id="sampleBtn">检查服务</button>
+            </div>
+          </form>
+
+          <div class="control-group">
+            <div class="filter-block">
+              <label for="severityFilter">风险等级</label>
+              <select id="severityFilter">
+                <option value="all">全部</option>
+                <option value="High">高</option>
+                <option value="Medium">中</option>
+                <option value="Low">低</option>
+              </select>
+            </div>
+
+            <div class="filter-block">
+              <label for="categoryFilter">问题类型</label>
+              <select id="categoryFilter">
+                <option value="all">全部</option>
+              </select>
+            </div>
+
+            <label class="toggle-row">
+              <input id="supportCheckToggle" type="checkbox" checked />
+              <span>
+                <strong>TB / JE 核对</strong>
+                <small>交叉验证与 JE 风险扫描</small>
+              </span>
+            </label>
+
+            <label class="toggle-row">
+              <input id="llmToggle" type="checkbox" />
+              <span>
+                <strong>启用 LLM 润色</strong>
+                <small>可选：增强 Review Notes 表述</small>
+              </span>
+            </label>
+          </div>
+
+          <div class="export-box">
+            <button type="button" class="btn-ghost" id="copyMdBtn">复制 Notes</button>
+            <button type="button" class="btn-ghost" id="downloadCsvBtn">导出 CSV</button>
+          </div>
+
+          <details class="advanced-box">
+            <summary>高级导出</summary>
+            <button type="button" class="btn-ghost wide" id="downloadAnnotatedBtn" disabled>下载批注底稿（可选）</button>
+          </details>
+
+          <div class="ai-box">
+            <span class="ai-label">分析模式</span>
+            <strong id="aiMode">规则引擎</strong>
+            <p id="aiMessage">规则负责定位与证据，LLM 仅在开启时润色表述。</p>
+            <button type="button" class="btn-mini" id="toggleConfigBtn">配置 API</button>
+            <div class="api-config" id="apiConfigPanel" hidden>
+              <label>
+                API Key
+                <input id="apiKeyInput" type="password" placeholder="sk-..." autocomplete="off" />
+              </label>
+              <label>
+                模型
+                <input id="modelInput" type="text" value="gpt-4.1-mini" />
+              </label>
+              <label>
+                Responses 接口
+                <input id="endpointInput" type="text" value="https://api.openai.com/v1/responses" />
+              </label>
+              <div class="button-row">
+                <button type="button" class="btn-secondary" id="saveConfigBtn">保存</button>
+                <button type="button" class="btn-ghost" id="clearConfigBtn">清除 Key</button>
+              </div>
+              <p id="configMessage" class="config-message"></p>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <header class="topbar scroll-reveal">
+            <div>
+              <span class="section-label">Review Workspace</span>
+              <h2>VCVD 底稿 Review 工作台</h2>
+              <p id="runMeta">等待分析</p>
+            </div>
+          </header>
+
+          <section class="metrics scroll-reveal" aria-label="统计">
+            <article class="metric panel-card">
+              <span>问题总数</span>
+              <strong id="metricTotal">0</strong>
+            </article>
+            <article class="metric panel-card high">
+              <span>高风险</span>
+              <strong id="metricHigh">0</strong>
+            </article>
+            <article class="metric panel-card medium">
+              <span>中风险</span>
+              <strong id="metricMedium">0</strong>
+            </article>
+            <article class="metric panel-card low">
+              <span>低风险</span>
+              <strong id="metricLow">0</strong>
+            </article>
+          </section>
+
+          <section class="progress-panel panel-card scroll-reveal" id="progressPanel">
+            <div class="progress-line">
+              <span id="progressText">等待开始</span>
+              <span id="progressPercent">0%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <ol id="progressSteps" class="progress-steps"></ol>
+          </section>
+
+          <section class="content-grid scroll-reveal" id="results">
+            <div class="findings-panel panel-card">
+              <div class="panel-head">
+                <h3>Review Notes</h3>
+                <span id="visibleCount">0 项</span>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>编号</th>
+                      <th>等级</th>
+                      <th>类型</th>
+                      <th>问题摘要</th>
+                      <th>审计风险</th>
+                      <th>位置</th>
+                    </tr>
+                  </thead>
+                  <tbody id="findingsBody">
+                    <tr>
+                      <td colspan="6" class="empty">上传底稿并点击「分析上传」开始 Review</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <article class="detail-panel panel-card" id="detailPanel">
+              <div class="panel-head">
+                <h3>问题详情</h3>
+                <span id="detailSeverity">未选择</span>
+              </div>
+              <div class="detail-empty">选择一条 Review Note 查看证据、风险与建议修改。</div>
+            </article>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-emblem">
+          <svg viewBox="0 0 48 64" aria-hidden="true">
+            <path d="M24 4 L34 22 H28 L32 36 H20 L24 52 L16 36 H12 L16 22 H10 Z" fill="currentColor" />
+          </svg>
+          <span>Audit Review</span>
+        </div>
+        <p class="script-accent">Embark on a journey through precision</p>
+        <small>FSO Audit CoE · EY AI Hackathon · John</small>
+      </div>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
