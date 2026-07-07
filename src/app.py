@@ -183,9 +183,9 @@ def render_notes_table(rows: list[dict[str, str]]) -> None:
 
 # ── sidebar ──────────────────────────────────────────────────────
 def render_sidebar() -> tuple[set[str], LLMConfig | None]:
-    """侧边栏仅放配置项：规则开关 + LLM 设置。"""
+    """侧边栏仅放配置项：检查项 + LLM 设置。"""
     # ── rules ──
-    st.sidebar.header("🔧 检查规则")
+    st.sidebar.header("🔧 检查项")
     col_a, col_b = st.sidebar.columns(2)
     with col_a:
         if st.button("全选", use_container_width=True, key="sb_all"):
@@ -202,7 +202,7 @@ def render_sidebar() -> tuple[set[str], LLMConfig | None]:
         if st.sidebar.checkbox(label, value=key in st.session_state["rule_selections"], key=f"rule_{key}"):
             selected.add(key)
     st.session_state["rule_selections"] = selected
-    st.sidebar.caption(f"已选 {len(selected)}/{len(RULE_LABELS)} 条规则")
+    st.sidebar.caption(f"已选 {len(selected)} 项检查")
 
     st.sidebar.markdown("---")
 
@@ -210,7 +210,7 @@ def render_sidebar() -> tuple[set[str], LLMConfig | None]:
     st.sidebar.header("🤖 LLM 增强（可选）")
     use_llm = st.sidebar.checkbox("启用 LLM 辅助判断", value=False)
     if not use_llm:
-        st.sidebar.caption("LLM 未启用 · 仅使用规则引擎")
+        st.sidebar.caption("LLM 未启用 · 将使用内置检查能力")
         return selected, None
 
     api_key = st.sidebar.text_input("DeepSeek API Key", type="password", placeholder="sk-...")
@@ -302,7 +302,7 @@ def render_upload_zone() -> tuple[list[Path], Path | None, Path | None, Path | N
     if tod_path:
         st.success(f"✅ TOD 底稿")
     else:
-        st.info("ℹ️ 未上传 TOD 底稿 · TOD 相关规则将跳过")
+        st.info("ℹ️ 未上传 TOD 底稿 · TOD 相关检查将跳过")
 
     if tb_path:
         st.success("✅ 科目余额表")
@@ -319,18 +319,17 @@ def render_run_button(main_path: Path | None, enabled_rules: set[str], llm_confi
 
     status_parts = []
     if main_path:
-        status_parts.append("✅ 底稿就绪")
+        status_parts.append("✅ 底稿已加载")
     else:
-        status_parts.append("❌ 缺少主底稿")
-    status_parts.append(f"🔧 {len(enabled_rules)} 条规则")
+        status_parts.append("❌ 请上传底稿")
     if llm_config and llm_config.is_available:
         test = st.session_state.get("llm_test_result")
         if test and test["ok"]:
-            status_parts.append(f"🤖 LLM 已连接")
+            status_parts.append("🤖 AI 引擎已就绪")
         else:
-            status_parts.append(f"🤖 LLM 待验证")
+            status_parts.append("🤖 AI 引擎待验证")
     else:
-        status_parts.append("📋 仅规则引擎")
+        status_parts.append("🤖 AI 引擎待配置")
 
     st.markdown(f"""
     <div class="run-area">
@@ -359,7 +358,7 @@ def render_results(
     st.markdown(f"""
     <div class="qc-file-header">
       <h2>Review 完成 · Findings {summary.total_notes} 条</h2>
-      <p>最高风险：{worst} · 耗时 {elapsed_s:.1f}s · 规则 {summary.rules_run} 条 · {llm_status_note}</p>
+      <p>最高风险：{worst} · 耗时 {elapsed_s:.1f}s · {llm_status_note}</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -376,7 +375,7 @@ def render_results(
     with c5:
         _render_card("涉及 Sheet", summary.sheets_impacted, "跨文件+Sheet", "other")
     with c6:
-        _render_card("规则数", summary.rules_run, "已执行的检查规则", "other")
+        _render_card("检查项", summary.rules_run, "已完成的检查维度", "other")
 
     st.caption(f"程序要求 {summary.program_rows} 行 · SOP Checklist {summary.checklist_rows} 检查点")
 
@@ -424,7 +423,7 @@ def render_results(
         f"全部 ({len(rows)})",
         f"🔴 High ({len(high_rows)})",
         f"🟡 Medium ({len(medium_rows)})",
-        "📋 规则执行日志",
+        "📋 执行日志",
     ])
 
     with tab_all:
@@ -434,7 +433,7 @@ def render_results(
     with tab_medium:
         render_notes_table(medium_rows)
     with tab_log:
-        st.caption("以下为本次执行的规则步骤日志。")
+        st.caption("以下为本次 Review 的执行步骤。")
         if "run_log" in st.session_state:
             for entry in st.session_state["run_log"]:
                 st.write(entry)
@@ -442,7 +441,7 @@ def render_results(
     with st.expander("🔍 系统诊断", expanded=False):
         st.write(f"总耗时: {elapsed_s:.1f}s")
         st.write(f"LLM 状态: {llm_status_note or '未启用'}")
-        st.write(f"Review Notes: {summary.total_notes} (H:{summary.high_count} M:{summary.medium_count} L:{summary.low_count})")
+        st.write(f"Review Notes: {summary.total_notes} (High:{summary.high_count} Medium:{summary.medium_count} Low:{summary.low_count})")
 
 
 # ── main ─────────────────────────────────────────────────────────
