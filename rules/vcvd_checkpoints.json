@@ -1,0 +1,65 @@
+[
+  {
+    "category": "基础完整性检查",
+    "name": "Lead Sheet 基础信息",
+    "scope": "Uexp.00 Lead",
+    "basis": "客户名称、期末、TE、SAD、会计准则、货币/单位等基础信息需更新并与 Canvas 一致。",
+    "typical_location": "Uexp.00 Lead!C2:C8"
+  },
+  {
+    "category": "重点审计程序检查",
+    "name": "PSP 执行/拒绝理由",
+    "scope": "汇总",
+    "basis": "执行程序在 G 列选择“是”；拒绝程序在 G 列选择“否”，并在 H 列写明具体原因。",
+    "typical_location": "汇总!G:H"
+  },
+  {
+    "category": "重点审计程序检查",
+    "name": "CRA 与测试阈值",
+    "scope": "VC/VD BKD",
+    "basis": "根据 Canvas 中各科目各认定的 CRA 设置情况填写 CRA，并检查 TT 计算。",
+    "typical_location": "BKD!C8:C11"
+  },
+  {
+    "category": "专业提示与优化建议",
+    "name": "预期与波动分析",
+    "scope": "VC/VD BKD Notes",
+    "basis": "需记录波动预期、依据和理由；异常波动需说明执行程序性质和相关索引。",
+    "typical_location": "BKD Notes"
+  },
+  {
+    "category": "重点审计程序检查",
+    "name": "TOD 样本总体与抽样依据",
+    "scope": "VC&VD.01.2 TOD",
+    "basis": "填列样本总体、数据来源、金额、剔除项、关键项和样本检查结果。",
+    "typical_location": "TOD 年审/预审页"
+  },
+  {
+    "category": "重点审计程序检查",
+    "name": "截止性测试期间",
+    "scope": "VC&VD.01.4 截止性测试",
+    "basis": "结合费用发生到入账周期确定测试期间，并记录确定依据。",
+    "typical_location": "VC&VD.01.4 截止性测试!B10:E10"
+  },
+  {
+    "category": "重点审计程序检查",
+    "name": "法律费用发函判断",
+    "scope": "VD.01.3 复核法律费用",
+    "basis": "对性质特殊的法律费用考虑律师询问函；不发函需列示原因和替代程序。",
+    "typical_location": "VD.01.3 复核法律费用!I:I"
+  },
+  {
+    "category": "逻辑与引用检查",
+    "name": "公式错误与交叉索引",
+    "scope": "全工作簿",
+    "basis": "金额、阈值和合计需与底稿/报表核对一致；公式错误会破坏底稿逻辑。",
+    "typical_location": "全工作簿公式单元格"
+  },
+  {
+    "category": "专业提示与优化建议",
+    "name": "Review 痕迹清理",
+    "scope": "全工作簿",
+    "basis": "底稿中不存在重大 OS 事项，review notes 均已解决并删除，底稿中无 highlight。",
+    "typical_location": "高亮单元格"
+  }
+]

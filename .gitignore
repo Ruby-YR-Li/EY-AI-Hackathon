@@ -27,3 +27,9 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# App runtime artifacts
+outputs/
+uploads/
+sample/
+*.bak
