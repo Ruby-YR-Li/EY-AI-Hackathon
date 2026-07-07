@@ -21,7 +21,7 @@ from expense_review_engine import (
     review_files,
 )
 from export_review_package import export_review_package
-from llm_assistant import LLMConfig, test_connection
+from llm_assistant import LLMConfig, list_models, test_connection
 
 # ── page config ──────────────────────────────────────────────────
 st.set_page_config(page_title="费用底稿 AI Review 助手", layout="wide")
@@ -203,17 +203,23 @@ def render_sidebar() -> tuple[set[str], LLMConfig | None]:
     st.sidebar.markdown("---")
 
     # ── LLM ──
-    st.sidebar.header("🤖 LLM 增强（可选）")
-    use_llm = st.sidebar.checkbox("启用 LLM 辅助判断", value=False)
+    st.sidebar.header("🤖 AI 增强（可选）")
+    use_llm = st.sidebar.checkbox("启用 AI 辅助判断", value=False)
     if not use_llm:
-        st.sidebar.caption("LLM 未启用 · 将使用内置检查能力")
+        st.sidebar.caption("AI 未启用 · 将使用内置检查能力")
         return selected, None
 
-    api_key = st.sidebar.text_input("DeepSeek API Key", type="password", placeholder="sk-...")
-    model = st.sidebar.text_input("模型", value="deepseek-chat")
+    models = list_models()
+    model_key = st.sidebar.selectbox(
+        "模型",
+        options=[m["key"] for m in models],
+        format_func=lambda k: next((m["label"] for m in models if m["key"] == k), k),
+        index=0,
+    )
+    api_key = st.sidebar.text_input("API Key", type="password", placeholder="留空则从环境变量读取")
     timeout = st.sidebar.number_input("超时(秒)", value=20, min_value=5, max_value=60)
 
-    config = LLMConfig(enabled=True, api_key=api_key, model=model, timeout_seconds=int(timeout))
+    config = LLMConfig(enabled=True, api_key=api_key, model_key=model_key, timeout_seconds=int(timeout))
 
     # 测试连接 + 状态持久化
     if "llm_test_result" not in st.session_state:
@@ -227,14 +233,13 @@ def render_sidebar() -> tuple[set[str], LLMConfig | None]:
     test = st.session_state.get("llm_test_result")
     if test is not None:
         if test["ok"]:
-            st.sidebar.success(f"🟢 已连接 · {test['model']} · {test['latency_ms']}ms")
+            st.sidebar.success(f"🟢 已连接 · {config.model} · {test['latency_ms']}ms")
         else:
             st.sidebar.error(f"🔴 {test['error'][:100]}")
     elif api_key:
         st.sidebar.caption("已填写 API Key · 点击测试连接验证")
-
-    if not api_key:
-        st.sidebar.caption("未填写 API Key · 将尝试环境变量")
+    else:
+        st.sidebar.caption("未填写 API Key · 将从环境变量自动读取")
 
     return selected, config
 

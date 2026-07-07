@@ -1,4 +1,4 @@
-"""DeepSeek-assisted evidence judgement for the expense review MVP."""
+"""LLM 辅助判断模块 — 支持 DeepSeek / 通义千问等 OpenAI 兼容 API。"""
 
 from __future__ import annotations
 
@@ -6,25 +6,129 @@ import json
 import os
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
+# ── 模型预设表 ──────────────────────────────────────────────────
+# 所有国内大模型统一走 OpenAI 兼容 API，只需换 base_url + model
 
-DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-DEFAULT_DEEPSEEK_MODEL = "deepseek-chat"
+ModelPreset = dict[str, dict[str, str]]
+
+MODEL_PRESETS: ModelPreset = {
+    # ── DeepSeek 系列 ──
+    "deepseek-v4-flash": {
+        "label": "DeepSeek V4 Flash（推荐·快速）",
+        "model": "deepseek-v4-flash",
+        "base_url": "https://api.deepseek.com",
+        "provider": "deepseek",
+    },
+    "deepseek-v4-pro": {
+        "label": "DeepSeek V4 Pro（高质量）",
+        "model": "deepseek-v4-pro",
+        "base_url": "https://api.deepseek.com",
+        "provider": "deepseek",
+    },
+    "deepseek-chat": {
+        "label": "DeepSeek V3",
+        "model": "deepseek-chat",
+        "base_url": "https://api.deepseek.com",
+        "provider": "deepseek",
+    },
+    "deepseek-reasoner": {
+        "label": "DeepSeek R1（深度推理）",
+        "model": "deepseek-reasoner",
+        "base_url": "https://api.deepseek.com",
+        "provider": "deepseek",
+    },
+    # ── 通义千问 系列 ──
+    "qwen-turbo": {
+        "label": "通义千问 Turbo（快速）",
+        "model": "qwen-turbo",
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "provider": "qwen",
+    },
+    "qwen-plus": {
+        "label": "通义千问 Plus（均衡）",
+        "model": "qwen-plus",
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "provider": "qwen",
+    },
+    "qwen-max": {
+        "label": "通义千问 Max（最强）",
+        "model": "qwen-max",
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "provider": "qwen",
+    },
+}
+
+DEFAULT_MODEL_KEY = "deepseek-v4-flash"
+
+# 各提供商的默认环境变量名
+PROVIDER_ENV_KEYS: dict[str, list[str]] = {
+    "deepseek": ["DEEPSEEK_API_KEY"],
+    "qwen": ["DASHSCOPE_API_KEY"],
+}
+
+
+def list_models() -> list[dict[str, str]]:
+    """返回可用模型列表（供 UI 下拉框使用）。"""
+    return [
+        {"key": key, "label": info["label"]}
+        for key, info in MODEL_PRESETS.items()
+    ]
+
+
+def get_preset(model_key: str | None) -> dict[str, str]:
+    """根据 key 获取模型配置，无效 key 返回默认。"""
+    if model_key and model_key in MODEL_PRESETS:
+        return MODEL_PRESETS[model_key]
+    return MODEL_PRESETS[DEFAULT_MODEL_KEY]
 
 
 @dataclass
 class LLMConfig:
     enabled: bool = True
     api_key: str = ""
-    base_url: str = DEFAULT_DEEPSEEK_BASE_URL
-    model: str = DEFAULT_DEEPSEEK_MODEL
+    model_key: str = DEFAULT_MODEL_KEY
     timeout_seconds: int = 20
+    # 以下为派生字段，不需手动设置
+    _model: str = field(default="", repr=False)
+    _base_url: str = field(default="", repr=False)
+    _provider: str = field(default="", repr=False)
+
+    def __post_init__(self):
+        preset = get_preset(self.model_key)
+        self._model = preset["model"]
+        self._base_url = preset["base_url"]
+        self._provider = preset.get("provider", "")
+
+    @property
+    def model(self) -> str:
+        return self._model
+
+    @property
+    def base_url(self) -> str:
+        return self._base_url
+
+    @property
+    def provider(self) -> str:
+        return self._provider
 
     @property
     def effective_api_key(self) -> str:
-        return self.api_key.strip() or os.environ.get("DEEPSEEK_API_KEY", "").strip() or os.environ.get("OPENAI_API_KEY", "").strip()
+        if self.api_key.strip():
+            return self.api_key.strip()
+        for env_key in PROVIDER_ENV_KEYS.get(self._provider, []):
+            val = os.environ.get(env_key, "").strip()
+            if val:
+                return val
+        # 兜底：尝试所有已知环境变量
+        for keys in PROVIDER_ENV_KEYS.values():
+            for k in keys:
+                val = os.environ.get(k, "").strip()
+                if val:
+                    return val
+        return ""
 
     @property
     def is_available(self) -> bool:
@@ -32,7 +136,7 @@ class LLMConfig:
 
 
 def _endpoint(base_url: str) -> str:
-    base = (base_url or DEFAULT_DEEPSEEK_BASE_URL).rstrip("/")
+    base = (base_url or MODEL_PRESETS[DEFAULT_MODEL_KEY]["base_url"]).rstrip("/")
     if base.endswith("/v1"):
         return f"{base}/chat/completions"
     return f"{base}/v1/chat/completions"
@@ -80,7 +184,7 @@ def call_deepseek_json(
     }
 
     payload = {
-        "model": config.model or DEFAULT_DEEPSEEK_MODEL,
+        "model": config.model,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
@@ -136,14 +240,14 @@ def test_connection(config: LLMConfig) -> dict:
     """
     import time
 
-    result = {"ok": False, "latency_ms": 0.0, "model": config.model or DEFAULT_DEEPSEEK_MODEL, "error": ""}
+    result = {"ok": False, "latency_ms": 0.0, "model": config.model, "error": ""}
 
     if not config.is_available:
         result["error"] = "API Key 未配置"
         return result
 
     payload = {
-        "model": config.model or DEFAULT_DEEPSEEK_MODEL,
+        "model": config.model,
         "messages": [{"role": "user", "content": "ping"}],
         "max_tokens": 1,
         "temperature": 0,
