@@ -27,3 +27,10 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# Local data / backups
+.local_data/
+tools_backup/
+
+# Built executables
+*.exe

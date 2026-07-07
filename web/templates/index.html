@@ -1,0 +1,3183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>审计底稿复核系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(180deg, #000000 0%, #1a1a1a 100%);
+            color: #fff;
+            padding: 24px 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            padding: 0 24px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 24px;
+        }
+        .sidebar-logo-text h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #FFE600;
+            margin-bottom: 4px;
+        }
+        .sidebar-logo-text p {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        /* 导航菜单 */
+        .nav-menu {
+            padding: 0 12px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            margin: 4px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        .nav-item:hover {
+            background: rgba(255,230,0,0.15);
+        }
+        .nav-item.active {
+            background: rgba(255,230,0,0.2);
+            color: #FFE600;
+        }
+        .nav-item i {
+            margin-right: 12px;
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        /* 侧边栏底部信息 */
+        .sidebar-footer {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            right: 24px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 12px;
+            opacity: 0.6;
+        }
+        .sidebar-footer p + p {
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        /* 页面头部 */
+        .page-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .page-header h2 {
+            font-size: 24px;
+            color: #000000;
+            margin-bottom: 8px;
+        }
+        .breadcrumb {
+            font-size: 13px;
+            color: #666;
+        }
+        .breadcrumb a {
+            color: #FFE600;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* 内容卡片 */
+        .content-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+
+        /* 首页 */
+        .home-intro {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            align-items: flex-start;
+            margin-bottom: 22px;
+        }
+        .home-intro h3 {
+            font-size: 20px;
+            color: #111;
+            margin-bottom: 8px;
+        }
+        .home-intro p {
+            color: #666;
+            line-height: 1.7;
+            font-size: 14px;
+            max-width: 720px;
+        }
+        .workflow-track {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(140px, 1fr));
+            gap: 24px;
+            align-items: stretch;
+        }
+        .workflow-step {
+            position: relative;
+            border: 1px solid #e6e6e6;
+            border-left: 4px solid #FFE600;
+            border-radius: 8px;
+            padding: 18px;
+            background: #fff;
+            min-height: 132px;
+        }
+        .workflow-step:not(:last-child)::after {
+            content: "➜";
+            position: absolute;
+            right: -25px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #FFE600;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.12);
+            z-index: 1;
+        }
+
+        /* 亮点展示 */
+        .highlights {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 8px;
+        }
+        .highlight-card {
+            border: 1px solid #e6e6e6;
+            border-radius: 10px;
+            padding: 24px 22px;
+            background: #fff;
+            transition: all 0.2s;
+        }
+        .highlight-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+            border-color: #FFE600;
+        }
+        .highlight-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .highlight-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+        .highlight-icon.pyai {
+            background: #EDE7F6;
+        }
+        .highlight-icon.trace {
+            background: #FFF3E0;
+        }
+        .highlight-card h4 {
+            font-size: 16px;
+            color: #111;
+            font-weight: 600;
+        }
+        .highlight-desc {
+            color: #555;
+            font-size: 13.5px;
+            line-height: 1.75;
+        }
+        .highlight-desc strong {
+            color: #000;
+        }
+        .highlight-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+        .highlight-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .highlight-tag.py {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+        .highlight-tag.ai {
+            background: #EDE7F6;
+            color: #6A1B9A;
+        }
+        .highlight-tag.pyai-tag {
+            background: #E3F2FD;
+            color: #1565C0;
+        }
+        .highlight-tag.rule {
+            background: #FFF8E1;
+            color: #F57F17;
+        }
+        .highlight-tag.cell {
+            background: #E0F2F1;
+            color: #00695C;
+        }
+        @media (max-width: 768px) {
+            .highlights {
+                grid-template-columns: 1fr;
+            }
+        }
+        .workflow-step h4 {
+            font-size: 15px;
+            color: #111;
+            margin-bottom: 10px;
+        }
+        .workflow-step p {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* 上传区域 */
+        .upload-area {
+            border: 2px dashed #FFE600;
+            border-radius: 12px;
+            padding: 48px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            background: #FFFDE7;
+            border-color: #FFD600;
+        }
+        .upload-area.dragover {
+            background: #FFFDE7;
+            border-color: #FFD600;
+        }
+        .upload-icon {
+            font-size: 56px;
+            color: #FFE600;
+            margin-bottom: 16px;
+        }
+        .upload-text {
+            color: #666;
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+        .upload-text strong {
+            color: #000000;
+        }
+        .upload-hint {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .file-input { display: none; }
+
+        .file-info {
+            margin: 16px 0;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .file-info .file-icon {
+            color: #FFE600;
+        }
+
+        .btn-check {
+            background: #FFE600;
+            color: #000000;
+            border: none;
+            padding: 14px 48px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        .btn-check:hover {
+            background: #FFD600;
+            transform: translateY(-1px);
+        }
+        .btn-check:disabled {
+            background: #ccc;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 加载状态 */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 48px;
+        }
+        .loading.visible { display: block; }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #FFE600;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 结果区域 */
+        .result-section {
+            display: none;
+        }
+        .result-section.visible { display: block; }
+
+        /* 汇总卡片 */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+        .summary-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .summary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .summary-card .number {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .summary-card .label {
+            font-size: 13px;
+            color: #666;
+        }
+        .summary-card.total .number { color: #FFE600; }
+        .summary-card.high .number { color: #d32f2f; }
+        .summary-card.medium .number { color: #f57c00; }
+        .summary-card.low .number { color: #388e3c; }
+        .summary-card.review .number { color: #7b1fa2; }
+        .summary-card.passed .number { color: #388e3c; }
+
+        /* Tab样式 */
+        .tab-nav {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 16px;
+        }
+        .tab-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .tab-item:hover { color: #333; }
+        .tab-item.active {
+            color: #000;
+            border-bottom-color: #FFE600;
+            font-weight: 600;
+        }
+        .tab-badge {
+            display: inline-block;
+            background: #e0e0e0;
+            color: #666;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 4px;
+        }
+        .tab-item.active .tab-badge {
+            background: #FFE600;
+            color: #000;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* 表格样式 */
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .table-header h3 {
+            font-size: 18px;
+            color: #333;
+        }
+        .table-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .filter-input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+        }
+        .filter-input:focus {
+            border-color: #FFE600;
+        }
+
+        .issues-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .issues-table th {
+            background: #f8f9fa;
+            padding: 14px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #e0e0e0;
+            white-space: nowrap;
+        }
+        .issues-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        .issues-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        .issues-table tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+        .issues-table tbody tr:nth-child(even):hover {
+            background: #f0f0f0;
+        }
+
+        .severity-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .severity-tag.high { background: #ffcdd2; color: #d32f2f; }
+        .severity-tag.medium { background: #ffe0b2; color: #f57c00; }
+        .severity-tag.low { background: #c8e6c9; color: #388e3c; }
+        .severity-tag.review { background: #e1bee7; color: #7b1fa2; }
+
+        /* 规则说明页样式 */
+        .rules-container {
+            display: flex;
+            gap: 0;
+        }
+        .rules-sidebar {
+            width: 200px;
+            min-width: 200px;
+            border-right: 1px solid #e0e0e0;
+            padding: 0;
+        }
+        .rules-nav-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #555;
+            border-bottom: 1px solid #f0f0f0;
+            transition: all 0.2s;
+        }
+        .rules-nav-item:hover {
+            background: #f8f9fa;
+            color: #333;
+        }
+        .rules-nav-item.active {
+            background: #FFFDE7;
+            color: #000;
+            font-weight: 600;
+            border-left: 3px solid #FFE600;
+        }
+        .rules-nav-item .nav-label {
+            flex: 1;
+        }
+        .rules-nav-item .nav-badge {
+            display: inline-block;
+            background: #e0e0e0;
+            color: #888;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 400;
+        }
+        .rules-nav-item.active .nav-badge {
+            background: #FFE600;
+            color: #000;
+        }
+        .rules-nav-item .nav-status {
+            font-size: 11px;
+            color: #999;
+            font-weight: 400;
+        }
+        .rules-nav-item.active .nav-status {
+            color: #FFE600;
+        }
+        .rules-content {
+            flex: 1;
+            padding: 0 24px;
+            min-height: 500px;
+        }
+        .rules-panel { display: none; }
+        .rules-panel.active { display: block; }
+        .rules-panel h3 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #333;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #FFE600;
+        }
+        .rules-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .rules-table th {
+            background: #f8f9fa;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #e0e0e0;
+            white-space: nowrap;
+        }
+        .rules-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        .rules-table tbody tr:hover {
+            background: #FFFDE7;
+        }
+        .rules-table tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+        .rules-table tbody tr:nth-child(even):hover {
+            background: #FFFDE7;
+        }
+        .rules-group-header {
+            background: #f0f0f0;
+            font-weight: 600;
+            color: #333;
+        }
+        .rules-group-header td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        .dev-notice {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            color: #999;
+            text-align: center;
+        }
+        .dev-notice .dev-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .dev-notice .dev-text {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #666;
+        }
+        .dev-notice .dev-hint {
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .download-btn {
+            background: #FFE600;
+            color: #000000;
+            border: none;
+            padding: 12px 28px;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        .download-btn:hover {
+            background: #FFD600;
+            transform: translateY(-1px);
+        }
+
+        /* 响应式 */
+        @media (max-width: 1200px) {
+            .summary-cards {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .workflow-track {
+                grid-template-columns: repeat(3, minmax(160px, 1fr));
+            }
+            .workflow-step:not(:last-child)::after {
+                display: none;
+            }
+        }
+        @media (max-width: 900px) {
+            .sidebar {
+                width: 70px;
+                overflow: hidden;
+            }
+            .sidebar:hover {
+                width: 260px;
+            }
+            .sidebar-header h1,
+            .sidebar-header p,
+            .nav-item span,
+            .sidebar-footer {
+                display: none;
+            }
+            .sidebar:hover .sidebar-header h1,
+            .sidebar:hover .sidebar-header p,
+            .sidebar:hover .nav-item span,
+            .sidebar:hover .sidebar-footer {
+                display: block;
+            }
+            .main-content {
+                margin-left: 70px;
+            }
+            .summary-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .workflow-track {
+                grid-template-columns: repeat(2, minmax(160px, 1fr));
+            }
+        }
+        @media (max-width: 600px) {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+            .home-intro {
+                display: block;
+            }
+            .workflow-track {
+                grid-template-columns: 1fr;
+            }
+        }
+        /* 表单样式 */
+        .settings-form {
+            max-width: 600px;
+        }
+        .mapping-form {
+            max-width: 900px;
+        }
+        .project-import-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+        .project-config-panel[hidden] {
+            display: none;
+        }
+        .mapping-section {
+            border-top: 1px solid #eee;
+            padding-top: 18px;
+            margin-top: 18px;
+        }
+        .mapping-section:first-child {
+            border-top: none;
+            padding-top: 0;
+            margin-top: 0;
+        }
+        .mapping-section h4 {
+            font-size: 16px;
+            margin-bottom: 14px;
+            color: #222;
+        }
+        .mapping-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(220px, 1fr));
+            gap: 16px;
+        }
+        .project-assertion-table {
+            width: 100%;
+            min-width: 1500px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .project-assertion-scroll {
+            width: 100%;
+            overflow-x: auto;
+        }
+        .project-assertion-table th,
+        .project-assertion-table td {
+            border: 1px solid #e5e5e5;
+            padding: 8px 6px;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        .project-assertion-table th {
+            background: #f7f8fa;
+            text-align: center;
+            font-weight: 600;
+        }
+        .project-assertion-table td:first-child {
+            width: 120px;
+            font-weight: 600;
+        }
+        .tiny-input,
+        .tiny-select {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+        .mapping-fields[hidden] {
+            display: none;
+        }
+        .field-hint {
+            color: #888;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #FFE600;
+            box-shadow: 0 0 0 2px rgba(255,230,0,0.2);
+        }
+        .form-group input::placeholder {
+            color: #aaa;
+        }
+        .form-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+            padding: 10px 18px;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        .btn-test {
+            background: #fff;
+            color: #000;
+            border: 2px solid #FFE600;
+            padding: 10px 24px;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        .btn-test:hover {
+            background: #FFFDE7;
+        }
+
+        /* 弹窗样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.visible {
+            display: flex;
+        }
+        .modal-content {
+            background: #fff;
+            border-radius: 12px;
+            width: 640px;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            animation: modalIn 0.2s ease-out;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-header {
+            padding: 20px 24px 12px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .modal-header h3 {
+            font-size: 16px;
+            color: #333;
+            margin: 0;
+        }
+        .modal-header .modal-rule-id {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            flex-shrink: 0;
+        }
+        .modal-close:hover {
+            background: #e0e0e0;
+        }
+        .modal-body {
+            padding: 20px 24px 24px;
+            line-height: 1.8;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+        }
+        .modal-body .detail-line {
+            margin-bottom: 8px;
+        }
+        .clickable-detail {
+            color: #1565c0;
+            cursor: pointer;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+        }
+        .clickable-detail:hover {
+            color: #0d47a1;
+            background: #e3f2fd;
+        }
+        .btn-detail {
+            padding: 4px 12px;
+            font-size: 12px;
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #bbdefb;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .btn-detail:hover {
+            background: #bbdefb;
+        }
+        .guide-nav-item {
+            width: 100%;
+            border: none;
+            background: transparent;
+            color: inherit;
+            text-align: left;
+            font-family: inherit;
+            appearance: none;
+            -webkit-appearance: none;
+            min-height: 48px;
+        }
+        .guide-nav-item i {
+            width: 18px;
+            height: 18px;
+            margin-right: 19px;
+            border: 1px solid rgba(255,255,255,0.65);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-style: normal;
+            font-weight: 700;
+            line-height: 1;
+            flex: 0 0 18px;
+        }
+        .onboarding-layer[hidden] {
+            display: none;
+        }
+        .onboarding-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        .onboarding-spotlight {
+            position: fixed;
+            border: 2px solid #FFE600;
+            border-radius: 10px;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.58), 0 8px 28px rgba(0,0,0,0.22);
+            transition: top 0.2s, left 0.2s, width 0.2s, height 0.2s;
+            pointer-events: none;
+        }
+        .onboarding-popover {
+            position: fixed;
+            width: min(360px, calc(100vw - 32px));
+            background: #fff;
+            color: #222;
+            border-radius: 8px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.24);
+            padding: 18px;
+            pointer-events: auto;
+            transition: top 0.2s, left 0.2s;
+        }
+        .onboarding-kicker {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+        .onboarding-popover h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #111;
+        }
+        .onboarding-popover p {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.7;
+            margin-bottom: 16px;
+        }
+        .onboarding-progress {
+            height: 4px;
+            background: #eeeeee;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+        .onboarding-progress-bar {
+            height: 100%;
+            background: #FFE600;
+            width: 0;
+            transition: width 0.2s;
+        }
+        .onboarding-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .onboarding-actions-left,
+        .onboarding-actions-right {
+            display: flex;
+            gap: 8px;
+        }
+        .onboarding-btn {
+            border: 1px solid #ddd;
+            background: #fff;
+            color: #333;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .onboarding-btn:hover {
+            background: #f4f4f4;
+        }
+        .onboarding-btn.primary {
+            background: #FFE600;
+            border-color: #FFE600;
+            color: #000;
+        }
+        .onboarding-btn.primary:hover {
+            background: #FFD600;
+        }
+        .onboarding-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        @media (max-width: 600px) {
+            .page-header {
+                align-items: center;
+            }
+            .onboarding-popover {
+                left: 16px !important;
+                right: 16px;
+                width: auto;
+                max-height: calc(100vh - 32px);
+                overflow-y: auto;
+            }
+            .onboarding-actions {
+                flex-direction: column;
+            }
+            .onboarding-actions-left,
+            .onboarding-actions-right {
+                justify-content: flex-end;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <!-- 侧边栏 -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <div class="sidebar-logo-text">
+                <h1>审计底稿复核</h1>
+                <p>自动化质检与复核</p>
+            </div>
+        </div>
+        <div class="nav-menu">
+            <div class="nav-item active" data-page="home">
+                <i>🏠</i>
+                <span>首页</span>
+            </div>
+            <div class="nav-item" data-page="upload">
+                <i>📁</i>
+                <span>上传质检</span>
+            </div>
+            <div class="nav-item" data-page="project-config">
+                <i>🧭</i>
+                <span>项目配置</span>
+            </div>
+            <div class="nav-item" data-page="rules">
+                <i>📖</i>
+                <span>规则说明</span>
+            </div>
+            <div class="nav-item" data-page="history">
+                <i>📋</i>
+                <span>历史记录</span>
+            </div>
+            <div class="nav-item" data-page="about">
+                <i>ℹ️</i>
+                <span>关于系统</span>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,0.1);margin:12px 0;"></div>
+            <div class="nav-item" data-page="settings">
+                <i>⚙️</i>
+                <span>系统设置</span>
+            </div>
+            <button class="nav-item guide-nav-item" id="startGuideBtn" type="button">
+                <i>?</i>
+                <span>新手指引</span>
+            </button>
+        </div>
+        <div class="sidebar-footer">
+            <p>版本: <span id="sidebarVersion">读取中...</span></p>
+            <p>如有问题或建议，请联系Ruby YR Li</p>
+        </div>
+    </nav>
+
+    <!-- 主内容区域 -->
+    <main class="main-content">
+        <!-- 页面头部 -->
+        <div class="page-header">
+            <div>
+                <h2 id="pageTitle">首页</h2>
+                <div class="breadcrumb">
+                    <a href="#" id="homeBreadcrumbLink">首页</a> / <span id="pageBreadcrumb">首页</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 首页 -->
+        <div id="page-home" class="page-content">
+            <div class="content-card">
+                <div class="home-intro">
+                    <div>
+                        <h3>审计底稿复核工作流</h3>
+                        <p>借助自动化工具实现审计底稿一键复核， 上传Excel底稿，自动执行全量基础规则筛查+大模型判断兜底，一键输出带批注的Excel汇总质检报告，让底稿复核从逐行翻页变成分钟级定位。</p>
+                    </div>
+                </div>
+                <div class="workflow-track" aria-label="审计底稿复核工作流">
+                    <div class="workflow-step">
+                        <h4>准备底稿</h4>
+                        <p>整理待复核的 Excel 审计底稿，确认文件格式和内容完整。</p>
+                    </div>
+                    <div class="workflow-step">
+                        <h4>选择检查范围</h4>
+                        <p>选择项目基础信息输入方法和检查科目。</p>
+                    </div>
+                    <div class="workflow-step">
+                        <h4>执行自动质检</h4>
+                        <p>系统按对应科目规则检查底稿，并调用AI完成大模型兜底判断。</p>
+                    </div>
+                    <div class="workflow-step">
+                        <h4>查看问题清单</h4>
+                        <p>按规则、严重程度和问题描述查看检查结果。</p>
+                    </div>
+                    <div class="workflow-step">
+                        <h4>导出质检报告</h4>
+                        <p>下载质检结果，追溯问题单元格位置，保留复核痕迹，便于后续整改和归档。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 亮点展示 -->
+            <div class="content-card">
+                <div class="highlights">
+                    <div class="highlight-card">
+                        <div class="highlight-header">
+                            <div class="highlight-icon pyai">🧠</div>
+                            <h4>Python + AI 大模型有效融合</h4>
+                        </div>
+                        <div class="highlight-desc">
+                            <strong>纯Python引擎</strong>高效执行格式校验、数据一致性核对、金额勾稽等<strong>20+条</strong>费用特定检查规则；<strong>AI大模型</strong>接管需要专业判断的模糊场景——异常波动识别、PSP拒绝理由合理性评估、费用分类异常判断等。两者无缝衔接，既保证速度又兼顾深度。
+                        </div>
+                        <div class="highlight-tags">
+                            <span class="highlight-tag py">纯Python · 50+条</span>
+                            <span class="highlight-tag ai">AI大模型 · 判断兜底</span>
+                            <span class="highlight-tag pyai-tag">Python+AI · 协同审核</span>
+                        </div>
+                    </div>
+                    <div class="highlight-card">
+                        <div class="highlight-header">
+                            <div class="highlight-icon trace">📋</div>
+                            <h4>核查逻辑结构化可追溯</h4>
+                        </div>
+                        <div class="highlight-desc">
+                            每条规则拥有<strong>唯一ID</strong>（如 AE-001、DP-005），明确标注<strong>检查位置</strong>、<strong>严重程度</strong>和<strong>实现方式</strong>。质检报告精确到<strong>问题单元格地址</strong>，一键追溯底稿原文，保留完整复核痕迹。逻辑公开透明，不再依赖个人经验黑箱。
+                        </div>
+                        <div class="highlight-tags">
+                            <span class="highlight-tag rule">唯一规则ID · 结构化</span>
+                            <span class="highlight-tag cell">精确到单元格 · 可追溯</span>
+                            <span class="highlight-tag pyai-tag">逻辑透明 · 保留痕迹</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 上传页面 -->
+        <div id="page-upload" class="page-content" style="display:none;">
+            <div class="content-card">
+                <h3 style="margin-bottom:16px;">本次质检任务</h3>
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label>项目代码</label>
+                        <input type="text" id="projectCodeInput" list="projectCodeOptions" placeholder="选择或输入已配置项目代码">
+                        <datalist id="projectCodeOptions"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label>科目</label>
+                        <select id="subjectSelect">
+                            <option value="fixed_assets">固定资产</option>
+                            <option value="management_sales_expenses" selected>管理费用&销售费用</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>TE/SAD来源</label>
+                        <select id="teSadSourceSelect">
+                            <option value="project_config">使用项目配置中的PM/TE/SAD</option>
+                            <option value="manual">手动输入TE/SAD</option>
+                            <option value="none">不执行外部TE/SAD一致性核对</option>
+                        </select>
+                    </div>
+                    <div id="manualTeSadPanel">
+                        <div class="form-group">
+                            <label>TE</label>
+                            <input type="number" id="manualTeInput" step="0.01" placeholder="本次质检TE">
+                        </div>
+                        <div class="form-group">
+                            <label>SAD</label>
+                            <input type="number" id="manualSadInput" step="0.01" placeholder="本次质检SAD">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>A3外部核对</label>
+                        <select id="useA3MappingInput">
+                            <option value="none">不执行A3外部核对</option>
+                            <option value="mapping">执行A3外部核对（单独上传最新版A3表）</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="a3FilePanel" style="display:none;">
+                        <label>最新版A3表</label>
+                        <input type="file" id="a3FileInput" accept=".xlsx,.xls">
+                    </div>
+                    <div class="form-actions" id="extractBaselineActions" style="display:none;">
+                        <button class="btn-test" id="extractBaselineBtn">提取并预览基准值</button>
+                        <span id="baselineStatus" style="margin-left:12px;font-size:13px;"></span>
+                    </div>
+                    <pre id="baselinePreview" style="display:none;background:#f8f9fa;border:1px solid #eee;border-radius:4px;padding:12px;white-space:pre-wrap;max-height:260px;overflow:auto;"></pre>
+
+                    <!-- AI开关：每次质检时选择 -->
+                    <div id="uploadAiOption" style="border-top:1px solid #eee;padding-top:18px;margin-top:18px;">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;color:#333;">
+                            <input type="checkbox" id="uploadEnableAi" checked style="width:18px;height:18px;cursor:pointer;">
+                            启用AI质检规则
+                            <span style="font-weight:400;font-size:12px;color:#999;">（取消勾选可大幅加快质检速度，无需等待AI返回）</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">
+                        <strong>点击上传</strong> 或拖拽Excel文件到此区域
+                    </div>
+                    <div class="upload-hint">仅支持 .xlsx 格式的审计底稿文件</div>
+                </div>
+                <input type="file" class="file-input" id="fileInput" accept=".xlsx">
+                <div class="file-info" id="fileInfo"></div>
+                <div style="margin-top:8px;font-size:13px;color:#888;">
+                    <label style="cursor:pointer;color:#1565c0;">
+                        <input type="checkbox" id="todCheckbox" onchange="document.getElementById('todFileInput').style.display=this.checked?'inline':'none'">
+                        同时上传TOD底稿
+                    </label>
+                    <input type="file" class="file-input" id="todFileInput" accept=".xlsx" style="display:none;margin-top:4px;">
+                    <div class="file-info" id="todFileInfo" style="font-size:12px;"></div>
+                </div>
+                <button class="btn-check" id="checkBtn" disabled>开始质检</button>
+            </div>
+
+            <!-- 加载状态 -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在执行质检，请稍候...</p>
+            </div>
+
+            <!-- 结果区域 -->
+            <div class="result-section" id="resultSection">
+                <div class="summary-cards">
+                    <div class="summary-card total">
+                        <div class="number" id="ruleTotalCount">0</div>
+                        <div class="label">总规则数</div>
+                    </div>
+                    <div class="summary-card passed">
+                        <div class="number" id="passedCount">0</div>
+                        <div class="label">检查通过</div>
+                    </div>
+                    <div class="summary-card high">
+                        <div class="number" id="failedCount">0</div>
+                        <div class="label">问题项</div>
+                    </div>
+                    <div class="summary-card" style="background:#f5f5f5;">
+                        <div class="number" id="skippedCount" style="color:#9e9e9e;">0</div>
+                        <div class="label">未检查</div>
+                    </div>
+                    <div class="summary-card review" id="aiDisabledCard" style="display:none;">
+                        <div class="number" id="aiDisabledCount">0</div>
+                        <div class="label">未调用AI</div>
+                    </div>
+                </div>
+                <div class="summary-cards" style="margin-bottom:24px;">
+                    <div class="summary-card total">
+                        <div class="number" id="totalCount">0</div>
+                        <div class="label">问题总数</div>
+                    </div>
+                    <div class="summary-card high">
+                        <div class="number" id="highCount">0</div>
+                        <div class="label">高严重度</div>
+                    </div>
+                    <div class="summary-card medium">
+                        <div class="number" id="mediumCount">0</div>
+                        <div class="label">中严重度</div>
+                    </div>
+                    <div class="summary-card low">
+                        <div class="number" id="lowCount">0</div>
+                        <div class="label">低严重度</div>
+                    </div>
+                    <div class="summary-card review">
+                        <div class="number" id="reviewCount">0</div>
+                        <div class="label">需review</div>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <div class="table-header">
+                        <h3>质检详情</h3>
+                        <div class="table-actions">
+                            <input type="text" class="filter-input" id="filterInput" placeholder="搜索规则ID/名称...">
+                            <button class="download-btn" id="downloadBtn">下载质检报告</button>
+                        </div>
+                    </div>
+
+                    <div class="tab-nav" id="tabNav">
+                        <div class="tab-item active" data-tab="issues">
+                            问题项 <span class="tab-badge" id="issuesTabBadge">0</span>
+                        </div>
+                        <div class="tab-item" data-tab="passed">
+                            检查通过 <span class="tab-badge" id="passedTabBadge">0</span>
+                        </div>
+                        <div class="tab-item" data-tab="skipped">
+                            未检查 <span class="tab-badge" id="skippedTabBadge">0</span>
+                        </div>
+                        <div class="tab-item" data-tab="ai_disabled" id="aiDisabledTab" style="display:none;">
+                            未调用AI <span class="tab-badge" id="aiDisabledTabBadge">0</span>
+                        </div>
+                    </div>
+
+                    <div class="tab-content active" id="tab-issues">
+                        <table class="issues-table">
+                            <thead>
+                                <tr>
+                                    <th>序号</th>
+                                    <th>规则ID</th>
+                                    <th>规则名称</th>
+                                    <th>检查类别</th>
+                                    <th>严重程度</th>
+                                    <th>所在Sheet</th>
+                                    <th>单元格地址</th>
+                                    <th>问题描述</th>
+                                    <th>复核建议</th>
+                                    <th>核对逻辑</th>
+                                </tr>
+                            </thead>
+                            <tbody id="issuesBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="tab-content" id="tab-passed">
+                        <table class="issues-table">
+                            <thead>
+                                <tr>
+                                    <th>序号</th>
+                                    <th>规则ID</th>
+                                    <th>规则名称</th>
+                                    <th>检查类别</th>
+                                    <th>状态</th>
+                                    <th>所在Sheet</th>
+                                    <th>单元格地址/核对范围</th>
+                                    <th>核对逻辑</th>
+                                </tr>
+                            </thead>
+                            <tbody id="passedBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="tab-content" id="tab-skipped">
+                        <table class="issues-table">
+                            <thead>
+                                <tr>
+                                    <th>序号</th>
+                                    <th>规则ID</th>
+                                    <th>规则名称</th>
+                                    <th>检查类别</th>
+                                    <th>未检查原因</th>
+                                </tr>
+                            </thead>
+                            <tbody id="skippedBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="tab-content" id="tab-ai_disabled">
+                        <table class="issues-table">
+                            <thead>
+                                <tr>
+                                    <th>序号</th>
+                                    <th>规则ID</th>
+                                    <th>规则名称</th>
+                                    <th>检查类别</th>
+                                    <th>原因</th>
+                                </tr>
+                            </thead>
+                            <tbody id="aiDisabledBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 项目配置页面 -->
+        <div id="page-project-config" class="page-content" style="display:none;">
+            <div class="content-card">
+                <h3 style="margin-bottom:20px;">配置方式</h3>
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label>Engagement Code</label>
+                        <input type="text" id="projectConfigCodeInput" placeholder="如：ABC2025">
+                    </div>
+                    <div class="form-group">
+                        <label>请选择项目配置方式</label>
+                        <select id="projectConfigModeSelect">
+                            <option value="manual">手动输入项目配置</option>
+                            <option value="upload">上传项目配置表</option>
+                            <option value="mapping">配置 mapping 关系</option>
+                        </select>
+                        <div class="field-hint">三种方式最终都会保存为同一份项目配置，上传页只需选择项目代码即可调用。</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card project-config-panel" id="manualProjectConfigPanel">
+                <h3 style="margin-bottom:20px;">手动输入项目配置</h3>
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label>资产负债表日</label>
+                        <input type="date" id="balanceSheetDateInput">
+                    </div>
+                    <div class="form-group">
+                        <label>PM</label>
+                        <input type="number" id="pmInput" step="0.01" placeholder="整体重要性">
+                    </div>
+                    <div class="form-group">
+                        <label>TE</label>
+                        <input type="number" id="teInput" step="0.01" placeholder="0 < TE ≤ PM">
+                    </div>
+                    <div class="form-group">
+                        <label>SAD</label>
+                        <input type="number" id="sadInput" step="0.01" placeholder="0 ≤ SAD ≤ TE">
+                    </div>
+                    <div class="form-group">
+                        <label>客户名称（可选）</label>
+                        <input type="text" id="clientNameInput" placeholder="如：ABC集团有限公司">
+                    </div>
+                    <div class="form-group">
+                        <label>审计年度（可选）</label>
+                        <input type="text" id="fiscalYearInput" placeholder="如：2025">
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card project-config-panel" id="uploadProjectConfigPanel" hidden>
+                <h3 style="margin-bottom:20px;">上传项目配置表</h3>
+                <div class="project-import-panel">
+                    <button class="btn-secondary" id="downloadProjectTemplateBtn">下载项目基础信息配置表</button>
+                    <input type="file" id="projectConfigFileInput" accept=".xlsx" style="flex:1;min-width:260px;">
+                    <button class="btn-test" id="importProjectConfigBtn">上传并解析配置表</button>
+                    <span id="projectConfigImportStatus" style="font-size:13px;"></span>
+                </div>
+                <div id="projectConfigImportPreview" style="display:none;margin-top:12px;padding:12px;background:#f8f9fa;border:1px solid #eee;border-radius:8px;white-space:pre-wrap;max-height:260px;overflow:auto;"></div>
+            </div>
+
+            <div class="content-card project-config-panel" id="manualProjectAssertionPanel">
+                <h3 style="margin-bottom:20px;">项目认定配置</h3>
+                <div class="mapping-form">
+                    <div class="mapping-section">
+                        <div class="project-assertion-scroll">
+                            <table class="project-assertion-table" id="subjectAssertionTable"></table>
+                        </div>
+                        <div class="field-hint" style="margin-top:10px;">CRA 可选 minimal / low / moderate / high / N/A；Threshold % 使用百分比格式，CRA 为 N/A 时留空。</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card project-config-panel" id="mappingProjectConfigPanel" hidden>
+                <h3 style="margin-bottom:20px;">项目取数配置（mapping 关系）</h3>
+                <div class="mapping-form">
+                    <div class="mapping-section">
+                        <h4>TE 取数配置</h4>
+                        <div class="mapping-grid">
+                            <div class="form-group">
+                                <label>TE 取数方式</label>
+                                <select id="teMethodSelect" data-mapping-method="te">
+                                    <option value="cell">固定单元格</option>
+                                    <option value="row_col_keyword">按行列关键词</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>TE Sheet 名称</label>
+                                <input type="text" id="teSheetInput" placeholder="如：Summary">
+                            </div>
+                        </div>
+                        <div class="mapping-grid mapping-fields" id="teCellFields">
+                            <div class="form-group">
+                                <label>TE 单元格</label>
+                                <input type="text" id="teCellInput" placeholder="如：B5">
+                            </div>
+                        </div>
+                        <div class="mapping-grid mapping-fields" id="teKeywordFields" hidden>
+                            <div class="form-group">
+                                <label>TE 行关键词</label>
+                                <input type="text" id="teRowKeywordInput" placeholder="如：TE">
+                            </div>
+                            <div class="form-group">
+                                <label>TE 列关键词</label>
+                                <input type="text" id="teColKeywordInput" placeholder="如：金额">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mapping-section">
+                        <h4>SAD 取数配置</h4>
+                        <div class="mapping-grid">
+                            <div class="form-group">
+                                <label>SAD 取数方式</label>
+                                <select id="sadMethodSelect" data-mapping-method="sad">
+                                    <option value="cell">固定单元格</option>
+                                    <option value="row_col_keyword">按行列关键词</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>SAD Sheet 名称</label>
+                                <input type="text" id="sadSheetInput" placeholder="如：Summary">
+                            </div>
+                        </div>
+                        <div class="mapping-grid mapping-fields" id="sadCellFields">
+                            <div class="form-group">
+                                <label>SAD 单元格</label>
+                                <input type="text" id="sadCellInput" placeholder="如：B6">
+                            </div>
+                        </div>
+                        <div class="mapping-grid mapping-fields" id="sadKeywordFields" hidden>
+                            <div class="form-group">
+                                <label>SAD 行关键词</label>
+                                <input type="text" id="sadRowKeywordInput" placeholder="如：SAD">
+                            </div>
+                            <div class="form-group">
+                                <label>SAD 列关键词</label>
+                                <input type="text" id="sadColKeywordInput" placeholder="如：金额">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mapping-section">
+                        <h4>A3 取数列</h4>
+                        <div class="mapping-grid">
+                            <div class="form-group">
+                                <label>A3 Sheet 名称</label>
+                                <input type="text" id="a3SheetInput" placeholder="如：A3">
+                            </div>
+                            <div class="form-group">
+                                <label>科目名称列</label>
+                                <input type="text" id="a3SubjectColInput" placeholder="如：B">
+                            </div>
+                            <div class="form-group">
+                                <label>账面金额列</label>
+                                <input type="text" id="a3BookColInput" placeholder="如：E">
+                            </div>
+                            <div class="form-group">
+                                <label>审定金额列</label>
+                                <input type="text" id="a3AuditedColInput" placeholder="如：I">
+                            </div>
+                            <div class="form-group">
+                                <label>上期审定金额列</label>
+                                <input type="text" id="a3PriorColInput" placeholder="如：J">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="form-actions">
+                    <button class="btn-secondary" id="loadProjectBtn">读取项目配置</button>
+                    <button class="btn-check" id="saveProjectBtn">保存项目配置</button>
+                    <span id="projectMappingStatus" style="margin-left:12px;font-size:13px;"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 历史记录页面 -->
+        <div id="page-history" class="page-content" style="display:none;">
+            <div class="content-card">
+                <h3>历史质检记录</h3>
+                <p style="color:#666; margin-top:12px;">功能开发中...</p>
+            </div>
+        </div>
+
+        <!-- 规则说明页面 -->
+        <div id="page-rules" class="page-content" style="display:none;">
+            <div class="content-card">
+                <h3 style="margin-bottom:16px;">检查规则说明</h3>
+                <div class="rules-container">
+                    <div class="rules-sidebar" id="rulesSidebar"></div>
+                    <div class="rules-content" id="rulesContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 关于页面 -->
+        <div id="page-about" class="page-content" style="display:none;">
+            <div class="content-card">
+                <h3>关于系统</h3>
+                <p style="color:#666; margin-top:12px;">审计底稿复核系统 <span id="aboutVersion"></span></p>
+                <p style="color:#666; margin-top:8px;">基于Review Checklist的审计底稿自动化质检与复核工具。</p>
+                <p style="color:#666; margin-top:8px;">本机数据目录：<span id="aboutDataDir">读取中...</span></p>
+            </div>
+        </div>
+
+        <!-- 系统设置页面 -->
+        <div id="page-settings" class="page-content" style="display:none;">
+            <div class="content-card">
+                <h3 style="margin-bottom:20px;">自动更新设置</h3>
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label>公司共享版本文件夹</label>
+                        <input type="text" id="cfgUpdateSource" placeholder="例如：\\公司文件服务器\共享资料\质检Agent发布">
+                        <div class="field-hint">首次填写后会保存在本机。以后每次启动都会自动检查该文件夹中的最新版。</div>
+                    </div>
+                    <div class="form-group">
+                        <label>当前版本</label>
+                        <input type="text" id="cfgCurrentVersion" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>本机数据目录</label>
+                        <input type="text" id="cfgDataDir" readonly>
+                        <div class="field-hint">真实底稿、质检报告、配置和缓存均保存在这里，不会写入共享版本文件夹。</div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-test" id="saveUpdateSourceBtn">保存并测试共享路径</button>
+                        <span id="updateSourceStatus" style="margin-left:12px;font-size:13px;"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="content-card">
+                <h3 style="margin-bottom:20px;">AI API配置</h3>
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label>API密钥 <span style="color:#d32f2f;font-size:12px;">（必填）</span></label>
+                        <div style="display:flex;gap:8px;">
+                            <input type="password" id="cfgApiKey" placeholder="sk-xxxxxxxx">
+                            <button class="btn-secondary" id="toggleKeyBtn" style="white-space:nowrap;">显示</button>
+                        </div>
+                        <div id="cfgKeyStatus" style="font-size:12px;margin-top:4px;color:#999;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>API端点 <span style="color:#999;font-size:12px;">（可选，使用官方接口请留空）</span></label>
+                        <input type="text" id="cfgBaseUrl" placeholder="如：https://dashscope.aliyuncs.com/compatible-mode/v1">
+                        <div class="field-hint">国内中转代理或自定义接口请在此填写，留空则使用各供应商官方默认地址</div>
+                    </div>
+                    <div class="form-group">
+                        <label>模型名称 <span style="color:#d32f2f;font-size:12px;">（必填）</span></label>
+                        <input type="text" id="cfgModel" placeholder="如：deepseek-chat、gpt-4.1、qwen-plus">
+                        <div class="field-hint">如使用国内代理访问OpenAI/Claude等，模型名称需与代理支持的名称一致</div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-check" id="saveConfigBtn">保存配置</button>
+                        <button class="btn-test" id="testConfigBtn">测试连接</button>
+                        <span id="configStatus" style="margin-left:12px;font-size:13px;"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 核对逻辑弹窗 -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modalTitle">核对逻辑详情</h3>
+                    <div class="modal-rule-id" id="modalRuleId"></div>
+                </div>
+                <button class="modal-close" id="modalCloseBtn">✕</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- 新手指引 -->
+    <div class="onboarding-layer" id="onboardingLayer" hidden>
+        <div class="onboarding-spotlight" id="onboardingSpotlight"></div>
+        <section class="onboarding-popover" id="onboardingPopover" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+            <div class="onboarding-kicker" id="onboardingKicker"></div>
+            <h3 id="onboardingTitle"></h3>
+            <p id="onboardingBody"></p>
+            <div class="onboarding-progress" aria-hidden="true">
+                <div class="onboarding-progress-bar" id="onboardingProgressBar"></div>
+            </div>
+            <div class="onboarding-actions">
+                <div class="onboarding-actions-left">
+                    <button class="onboarding-btn" id="onboardingSkipBtn" type="button">跳过</button>
+                </div>
+                <div class="onboarding-actions-right">
+                    <button class="onboarding-btn" id="onboardingPrevBtn" type="button">上一步</button>
+                    <button class="onboarding-btn primary" id="onboardingNextBtn" type="button">下一步</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+    (function() {
+        // ========== 规则说明页 ==========
+        const rulesSubjects = [
+            { id: 'cash', name: '货币资金', status: 'dev' },
+            { id: 'fa', name: '固定资产', status: 'ready', count: 50 },
+            { id: 'ia', name: '无形资产', status: 'dev' },
+            { id: 'lea', name: '长期待摊费用', status: 'dev' },
+            { id: 'cip', name: '在建工程', status: 'dev' },
+            { id: 'loan', name: '借款', status: 'dev' },
+            { id: 'np', name: '应付票据', status: 'dev' },
+            { id: 'sage', name: '销售费用&管理费用', status: 'ready', count: 23 },
+            { id: 'fe', name: '财务费用', status: 'dev' }
+        ];
+
+        const fixedAssetsRules = []; // 固定资产规则（本版本未使用）
+        const expenseRules = [
+            { group: 'UEXP-PSP - 审计程序执行完整性', rules: [
+                { id: 'UEXP-PSP-001', name: 'PSP程序执行完整性', check: '汇总', method: '纯Python', severity: '高' },
+                { id: 'UEXP-PSP-002', name: 'PSP拒绝执行理由充分性', check: '汇总 + BKD', method: '纯Python+AI', severity: '需review' },
+            ]},
+            { group: 'UEXP-FMT - 底稿格式与基础信息', rules: [
+                { id: 'UEXP-FMT-001', name: 'Lead Sheet基本信息检查', check: 'Uexp.00 Lead', method: '纯Python', severity: '高' },
+                { id: 'UEXP-FMT-002', name: '分析日期合理性检查', check: 'Uexp.00 Lead', method: '纯Python', severity: '低' },
+                { id: 'UEXP-FMT-003', name: '底稿清洁度（Highlight/隐藏）', check: '所有工作表', method: '纯Python', severity: '需review' },
+                { id: 'UEXP-FMT-004', name: '底稿交叉索引完整', check: 'BKD', method: '纯Python', severity: '需review' },
+            ]},
+            { group: 'UEXP-GL - 勾稽关系核对', rules: [
+                { id: 'UEXP-GL-001', name: 'Lead Sheet本期账面数与BKD核对', check: 'Uexp.00 Lead + BKD', method: '纯Python', severity: '高' },
+                { id: 'UEXP-GL-002', name: 'Lead Sheet审定数与A3核对', check: 'Uexp.00 Lead', method: '纯Python', severity: '高' },
+                { id: 'UEXP-GL-003', name: 'TE/SAD与Canvas一致性', check: 'Uexp.00 Lead', method: '纯Python', severity: '高' },
+                { id: 'UEXP-GL-004', name: 'TE/SAD/CRA配置核对', check: 'Uexp.00 Lead + 用户配置', method: '纯Python', severity: '高' },
+            ]},
+            { group: 'UEXP-BKD - BKD波动分析完整性', rules: [
+                { id: 'UEXP-BKD-001', name: 'BKD预期记录检查', check: 'VC/VD BKD', method: '纯Python', severity: '中' },
+                { id: 'UEXP-BKD-002', name: 'BKD金额排序检查', check: 'VC/VD BKD', method: '纯Python', severity: '低' },
+                { id: 'UEXP-BKD-003', name: '波动标记完整性（P列）', check: 'VC/VD BKD', method: '纯Python', severity: '中' },
+                { id: 'UEXP-BKD-004', name: '定性标记完整性（Q列）', check: 'VC/VD BKD', method: '纯Python+AI', severity: '中' },
+                { id: 'UEXP-BKD-005', name: 'ARP波动分析记录检查', check: 'VC/VD BKD', method: '纯Python', severity: '高' },
+                { id: 'UEXP-BKD-006', name: '波动说明充分性检查', check: 'VC/VD BKD', method: '纯Python+AI', severity: '需review' },
+                { id: 'UEXP-BKD-007', name: '新增/异常费用项目识别', check: 'VC/VD BKD', method: '纯Python', severity: '中' },
+                { id: 'UEXP-BKD-008', name: 'X-ref交叉索引完整性', check: 'VC/VD BKD', method: '纯Python', severity: '中' },
+            ]},
+            { group: 'UEXP-TOD - 详细测试TOD', rules: [
+                { id: 'UEXP-TOD-001', name: '样本总体SCOT区分检查', check: 'TOD', method: '纯Python', severity: '高' },
+                { id: 'UEXP-TOD-002', name: 'TOD抽样策略X-ref完整性', check: 'TOD', method: '纯Python', severity: '中' },
+                { id: 'UEXP-TOD-003', name: '剔除项合理性检查', check: 'TOD', method: '纯Python', severity: '中' },
+                { id: 'UEXP-TOD-004', name: '关键项选取记录检查', check: 'TOD', method: '纯Python', severity: '中' },
+            ]},
+            { group: 'UEXP-CO - 截止性测试', rules: [
+                { id: 'UEXP-CO-001', name: '截止测试期间确定依据', check: 'VC&VD.01.4', method: '纯Python', severity: '中' },
+                { id: 'UEXP-CO-002', name: '截止测试样本策略记录', check: 'VC&VD.01.4', method: '纯Python', severity: '中' },
+                { id: 'UEXP-CO-003', name: '截止测试样本金额合理性', check: 'VC&VD.01.4', method: '纯Python', severity: '需review' },
+            ]},
+            { group: 'UEXP-AI - AI增强分析', rules: [
+                { id: 'UEXP-AI-001', name: 'BKD异常波动AI辅助判断', check: 'VC/VD BKD', method: 'AI大模型', severity: '需review' },
+                { id: 'UEXP-AI-002', name: '费用分类异常AI识别', check: 'VC/VD BKD', method: 'AI大模型', severity: '需review' },
+                { id: 'UEXP-AI-003', name: '法律费用关注性判断', check: 'VD BKD', method: 'AI大模型', severity: '需review' },
+            ]},
+        ];
+
+        function getSeverityTag(severity) {
+            const cls = severity.includes('高') ? 'high' :
+                        severity.includes('中') ? 'medium' :
+                        severity.includes('需review') ? 'review' : 'low';
+            return `<span class="severity-tag ${cls}">${severity}</span>`;
+        }
+
+        function getMethodImpl(method) {
+            if (method === 'AI大模型') return '<span style="color:#7b1fa2;font-weight:600;">AI</span>';
+            if (method.includes('AI')) return '<span style="color:#1565c0;font-weight:600;">Python+AI</span>';
+            return '<span style="color:#388e3c;">Python</span>';
+        }
+
+        function getRulesForSubject(subject) {
+            if (subject.id === 'fa') return fixedAssetsRules;
+            if (subject.id === 'sage') return expenseRules;
+            return null;
+        }
+
+        function renderRulesPanel(subject) {
+            if (subject.status === 'dev') {
+                return `
+                    <div class="rules-panel" id="rules-${subject.id}">
+                        <h3>${subject.name}</h3>
+                        <div class="dev-notice">
+                            <div class="dev-icon">🔨</div>
+                            <div class="dev-text">该科目检查规则开发中</div>
+                            <div class="dev-hint">敬请期待后续版本更新</div>
+                        </div>
+                    </div>`;
+            }
+
+            let tableRows = '';
+            const rules = getRulesForSubject(subject);
+            if (!rules) {
+                return `<div class="rules-panel" id="rules-${subject.id}"><h3>${subject.name}</h3><div class="dev-notice"><div class="dev-icon">🔨</div><div class="dev-text">该科目规则定义中</div></div></div>`;
+            }
+            for (const group of rules) {
+                tableRows += `<tr class="rules-group-header"><td colspan="5">${group.group}（${group.rules.length}条）</td></tr>`;
+                group.rules.forEach(r => {
+                    tableRows += `<tr>
+                        <td style="white-space:nowrap;font-weight:600;color:#333;">${r.id}</td>
+                        <td>${r.name}</td>
+                        <td>${r.check}</td>
+                        <td>${getMethodImpl(r.method)}</td>
+                        <td>${getSeverityTag(r.severity)}</td>
+                    </tr>`;
+                });
+            }
+
+            return `
+                <div class="rules-panel active" id="rules-${subject.id}">
+                    <h3>${subject.name}（${subject.count}条规则）</h3>
+                    <table class="rules-table">
+                        <thead>
+                            <tr>
+                                <th>规则ID</th>
+                                <th>规则名称</th>
+                                <th>检查位置</th>
+                                <th>实现方式</th>
+                                <th>严重程度</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>`;
+        }
+
+        function initRulesPage() {
+            const sidebar = document.getElementById('rulesSidebar');
+            const content = document.getElementById('rulesContent');
+            sidebar.innerHTML = '';
+            content.innerHTML = '';
+
+            rulesSubjects.forEach((subject, index) => {
+                const navItem = document.createElement('div');
+                navItem.className = 'rules-nav-item' + (index === 1 ? ' active' : '');
+                navItem.dataset.subject = subject.id;
+                if (subject.status === 'dev') {
+                    navItem.innerHTML = `<span class="nav-label">${subject.name}</span><span class="nav-status">开发中</span>`;
+                } else {
+                    navItem.innerHTML = `<span class="nav-label">${subject.name}</span><span class="nav-badge">${subject.count}条</span>`;
+                }
+                navItem.addEventListener('click', function() {
+                    document.querySelectorAll('.rules-nav-item').forEach(n => n.classList.remove('active'));
+                    document.querySelectorAll('.rules-panel').forEach(p => p.classList.remove('active'));
+                    this.classList.add('active');
+                    document.getElementById('rules-' + subject.id).classList.add('active');
+                });
+                sidebar.appendChild(navItem);
+
+                content.innerHTML += renderRulesPanel(subject);
+            });
+        }
+        initRulesPage();
+
+        // 页面导航
+        const navItems = document.querySelectorAll('.nav-item[data-page]');
+        const pageContents = document.querySelectorAll('.page-content');
+        const pageTitle = document.getElementById('pageTitle');
+        const pageBreadcrumb = document.getElementById('pageBreadcrumb');
+        const homeBreadcrumbLink = document.getElementById('homeBreadcrumbLink');
+
+        function switchPage(page) {
+            const targetPage = document.getElementById('page-' + page);
+            if (!targetPage) return;
+
+            // 更新导航状态
+            navItems.forEach(n => n.classList.remove('active'));
+            const targetNav = document.querySelector(`.nav-item[data-page="${page}"]`);
+            if (targetNav) targetNav.classList.add('active');
+
+            // 切换页面
+            pageContents.forEach(p => p.style.display = 'none');
+            targetPage.style.display = 'block';
+
+            // 更新标题
+            const titles = {
+                home: '首页',
+                upload: '上传质检',
+                history: '历史记录',
+                'project-config': '项目配置',
+                rules: '规则说明',
+                about: '关于系统',
+                settings: '系统设置'
+            };
+            pageTitle.textContent = titles[page] || '';
+            pageBreadcrumb.textContent = titles[page] || '';
+
+            if (page === 'project-config') {
+                loadProjectOptions()
+                    .then(() => {
+                        const currentCode = projectCodeInput.value.trim();
+                        if (currentCode && !projectConfigCodeInput.value.trim()) {
+                            const project = projectRecords.find(p => p.project_code === currentCode);
+                            if (project) fillProjectConfig(project);
+                            else projectConfigCodeInput.value = currentCode;
+                        }
+                    })
+                    .catch(e => console.error('加载项目配置失败', e));
+            }
+        }
+
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                switchPage(this.dataset.page);
+            });
+        });
+        if (homeBreadcrumbLink) {
+            homeBreadcrumbLink.addEventListener('click', function(event) {
+                event.preventDefault();
+                switchPage('home');
+            });
+        }
+
+        // 新手指引
+        const guideStorageKey = 'qualityAgent.onboarding.v2';
+        const guideSteps = [
+            {
+                page: 'settings',
+                target: '#cfgApiKey',
+                title: '先配置API',
+                body: '第一次使用建议先填写API密钥、选择模型并测试连接。配置完成后，上传质检时才可以启用AI质检规则。'
+            },
+            {
+                page: 'project-config',
+                target: '[data-page="project-config"]',
+                title: '按需维护项目配置',
+                body: '常用项目建议先在这里保存PM、TE、SAD、认定和mapping关系，后续上传质检时只要选择项目代码。'
+            },
+            {
+                page: 'upload',
+                target: '[data-page="upload"]',
+                title: '回到上传质检',
+                body: '日常使用通常都在这里完成：选项目、选核对方式、上传底稿，然后开始质检。'
+            },
+            {
+                page: 'upload',
+                target: '#projectCodeInput',
+                title: '填写或选择项目代码',
+                body: '如果已经在项目配置里保存过项目，输入项目代码后会沿用对应的PM、TE、SAD和mapping配置。'
+            },
+            {
+                page: 'upload',
+                target: '#teSadSourceSelect',
+                title: '确认TE/SAD来源',
+                body: '默认使用项目配置里的PM/TE/SAD；临时测试可以改为手动输入，不需要外部核对时也可以选择不执行。'
+            },
+            {
+                page: 'upload',
+                target: '#useA3MappingInput',
+                title: '按需开启A3外部核对',
+                body: '如果这次需要和最新版A3表核对，就选择执行并上传A3表；否则保持不执行即可。'
+            },
+            {
+                page: 'upload',
+                target: '#uploadAiOption',
+                title: '选择是否启用AI规则',
+                body: '启用AI会检查更多需要判断的规则，但耗时更长；只想快速跑纯规则时可以取消勾选。'
+            },
+            {
+                page: 'upload',
+                target: '#uploadArea',
+                title: '上传本次审计底稿',
+                body: '点击上传区域或直接拖入Excel底稿。当前仅支持.xlsx格式，选中文件后开始质检按钮会自动可用。'
+            },
+            {
+                page: 'upload',
+                target: '#checkBtn',
+                title: '开始质检',
+                body: '点击后系统会执行规则检查并生成报告。运行期间不要关闭页面，完成后会在下方展示结果。'
+            },
+            {
+                page: 'upload',
+                target: '#resultSection',
+                fallbackTarget: '#checkBtn',
+                title: '查看结果并下载报告',
+                body: '质检完成后，下方会显示规则汇总、问题清单、通过/跳过记录，并提供下载质检报告按钮。'
+            }
+        ];
+        const guideLayer = document.getElementById('onboardingLayer');
+        const guideSpotlight = document.getElementById('onboardingSpotlight');
+        const guidePopover = document.getElementById('onboardingPopover');
+        const guideKicker = document.getElementById('onboardingKicker');
+        const guideTitle = document.getElementById('onboardingTitle');
+        const guideBody = document.getElementById('onboardingBody');
+        const guideProgressBar = document.getElementById('onboardingProgressBar');
+        const guidePrevBtn = document.getElementById('onboardingPrevBtn');
+        const guideNextBtn = document.getElementById('onboardingNextBtn');
+        const guideSkipBtn = document.getElementById('onboardingSkipBtn');
+        const startGuideBtn = document.getElementById('startGuideBtn');
+        let guideIndex = 0;
+        let guideActive = false;
+
+        function activateGuidePage(page) {
+            const targetNav = document.querySelector(`.nav-item[data-page="${page}"]`);
+            if (targetNav && !targetNav.classList.contains('active')) {
+                targetNav.click();
+            }
+        }
+
+        function findVisibleGuideTarget(step) {
+            const selectors = [step.target, step.fallbackTarget].filter(Boolean);
+            for (const selector of selectors) {
+                const el = document.querySelector(selector);
+                if (!el) continue;
+                const rect = el.getBoundingClientRect();
+                const style = window.getComputedStyle(el);
+                if (rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none') {
+                    return el;
+                }
+            }
+            return null;
+        }
+
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        function positionGuide(shouldScrollTarget = false) {
+            if (!guideActive) return;
+            const step = guideSteps[guideIndex];
+            const target = findVisibleGuideTarget(step);
+            const margin = 14;
+
+            if (!target) {
+                guideSpotlight.style.display = 'none';
+                const popoverRect = guidePopover.getBoundingClientRect();
+                guidePopover.style.left = `${Math.max(16, (window.innerWidth - popoverRect.width) / 2)}px`;
+                guidePopover.style.top = `${Math.max(16, (window.innerHeight - popoverRect.height) / 2)}px`;
+                return;
+            }
+
+            if (shouldScrollTarget) {
+                target.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+            }
+            window.setTimeout(() => {
+                const rect = target.getBoundingClientRect();
+                const paddedTop = Math.max(8, rect.top - 8);
+                const paddedLeft = Math.max(8, rect.left - 8);
+                const paddedWidth = Math.min(window.innerWidth - paddedLeft - 8, rect.width + 16);
+                const paddedHeight = Math.min(window.innerHeight - paddedTop - 8, rect.height + 16);
+
+                guideSpotlight.style.display = 'block';
+                guideSpotlight.style.top = `${paddedTop}px`;
+                guideSpotlight.style.left = `${paddedLeft}px`;
+                guideSpotlight.style.width = `${paddedWidth}px`;
+                guideSpotlight.style.height = `${paddedHeight}px`;
+
+                const popoverRect = guidePopover.getBoundingClientRect();
+                let top = rect.bottom + margin;
+                if (top + popoverRect.height > window.innerHeight - 16) {
+                    top = rect.top - popoverRect.height - margin;
+                }
+                if (top < 16) {
+                    top = 16;
+                }
+
+                let left = rect.left;
+                if (left + popoverRect.width > window.innerWidth - 16) {
+                    left = window.innerWidth - popoverRect.width - 16;
+                }
+                left = clamp(left, 16, Math.max(16, window.innerWidth - popoverRect.width - 16));
+
+                guidePopover.style.top = `${top}px`;
+                guidePopover.style.left = `${left}px`;
+            }, 180);
+        }
+
+        function renderGuideStep() {
+            const step = guideSteps[guideIndex];
+            activateGuidePage(step.page);
+            guideKicker.textContent = `第 ${guideIndex + 1} 步 / 共 ${guideSteps.length} 步`;
+            guideTitle.textContent = step.title;
+            guideBody.textContent = step.body;
+            guideProgressBar.style.width = `${((guideIndex + 1) / guideSteps.length) * 100}%`;
+            guidePrevBtn.disabled = guideIndex === 0;
+            guideNextBtn.textContent = guideIndex === guideSteps.length - 1 ? '完成' : '下一步';
+            window.setTimeout(() => positionGuide(true), 80);
+        }
+
+        function startGuide(force = false) {
+            if (!force && localStorage.getItem(guideStorageKey) === 'done') return;
+            guideActive = true;
+            guideIndex = 0;
+            guideLayer.hidden = false;
+            renderGuideStep();
+        }
+
+        function finishGuide(markDone = true) {
+            guideActive = false;
+            guideLayer.hidden = true;
+            if (markDone) {
+                localStorage.setItem(guideStorageKey, 'done');
+            }
+        }
+
+        startGuideBtn.addEventListener('click', () => startGuide(true));
+        guideSkipBtn.addEventListener('click', () => finishGuide(true));
+        guidePrevBtn.addEventListener('click', () => {
+            if (guideIndex > 0) {
+                guideIndex -= 1;
+                renderGuideStep();
+            }
+        });
+        guideNextBtn.addEventListener('click', () => {
+            if (guideIndex >= guideSteps.length - 1) {
+                finishGuide(true);
+                return;
+            }
+            guideIndex += 1;
+            renderGuideStep();
+        });
+        window.addEventListener('resize', positionGuide);
+        window.addEventListener('scroll', positionGuide, true);
+        document.addEventListener('keydown', function(e) {
+            if (!guideActive) return;
+            if (e.key === 'Escape') finishGuide(false);
+            if (e.key === 'ArrowRight') guideNextBtn.click();
+            if (e.key === 'ArrowLeft') guidePrevBtn.click();
+        });
+        // 首页已经承载基础说明，新手指引改为由左侧按钮手动开启。
+
+        // 文件上传
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const checkBtn = document.getElementById('checkBtn');
+        const loading = document.getElementById('loading');
+        const resultSection = document.getElementById('resultSection');
+        let selectedFile = null;
+        let extractedBaseline = {};
+
+        const projectCodeInput = document.getElementById('projectCodeInput');
+        const projectCodeOptions = document.getElementById('projectCodeOptions');
+        const projectConfigCodeInput = document.getElementById('projectConfigCodeInput');
+        const balanceSheetDateInput = document.getElementById('balanceSheetDateInput');
+        const pmInput = document.getElementById('pmInput');
+        const teInput = document.getElementById('teInput');
+        const sadInput = document.getElementById('sadInput');
+        const clientNameInput = document.getElementById('clientNameInput');
+        const fiscalYearInput = document.getElementById('fiscalYearInput');
+        const downloadProjectTemplateBtn = document.getElementById('downloadProjectTemplateBtn');
+        const projectConfigFileInput = document.getElementById('projectConfigFileInput');
+        const importProjectConfigBtn = document.getElementById('importProjectConfigBtn');
+        const projectConfigImportStatus = document.getElementById('projectConfigImportStatus');
+        const projectConfigImportPreview = document.getElementById('projectConfigImportPreview');
+        const subjectAssertionTable = document.getElementById('subjectAssertionTable');
+        const projectConfigModeSelect = document.getElementById('projectConfigModeSelect');
+        const manualProjectConfigPanel = document.getElementById('manualProjectConfigPanel');
+        const uploadProjectConfigPanel = document.getElementById('uploadProjectConfigPanel');
+        const manualProjectAssertionPanel = document.getElementById('manualProjectAssertionPanel');
+        const mappingProjectConfigPanel = document.getElementById('mappingProjectConfigPanel');
+        const teMethodSelect = document.getElementById('teMethodSelect');
+        const teSheetInput = document.getElementById('teSheetInput');
+        const teCellInput = document.getElementById('teCellInput');
+        const teRowKeywordInput = document.getElementById('teRowKeywordInput');
+        const teColKeywordInput = document.getElementById('teColKeywordInput');
+        const sadMethodSelect = document.getElementById('sadMethodSelect');
+        const sadSheetInput = document.getElementById('sadSheetInput');
+        const sadCellInput = document.getElementById('sadCellInput');
+        const sadRowKeywordInput = document.getElementById('sadRowKeywordInput');
+        const sadColKeywordInput = document.getElementById('sadColKeywordInput');
+        const a3SheetInput = document.getElementById('a3SheetInput');
+        const a3SubjectColInput = document.getElementById('a3SubjectColInput');
+        const a3BookColInput = document.getElementById('a3BookColInput');
+        const a3AuditedColInput = document.getElementById('a3AuditedColInput');
+        const a3PriorColInput = document.getElementById('a3PriorColInput');
+        const saveProjectBtn = document.getElementById('saveProjectBtn');
+        const loadProjectBtn = document.getElementById('loadProjectBtn');
+        const projectMappingStatus = document.getElementById('projectMappingStatus');
+        const subjectSelect = document.getElementById('subjectSelect');
+        const teSadSourceSelect = document.getElementById('teSadSourceSelect');
+        const manualTeSadPanel = document.getElementById('manualTeSadPanel');
+        const manualTeInput = document.getElementById('manualTeInput');
+        const manualSadInput = document.getElementById('manualSadInput');
+        const useA3MappingInput = document.getElementById('useA3MappingInput');
+        const a3FilePanel = document.getElementById('a3FilePanel');
+        const a3FileInput = document.getElementById('a3FileInput');
+        const extractBaselineActions = document.getElementById('extractBaselineActions');
+        const extractBaselineBtn = document.getElementById('extractBaselineBtn');
+        const baselineStatus = document.getElementById('baselineStatus');
+        const baselinePreview = document.getElementById('baselinePreview');
+        let projectRecords = [];
+
+        const projectSubjects = [
+            { code: 'fixed_assets', name: '固定资产' },
+            { code: 'intangible_assets', name: '无形资产' },
+            { code: 'construction_in_progress', name: '在建工程' },
+            { code: 'long_term_deferred_expenses', name: '长期待摊费用' },
+            { code: 'cash', name: '货币资金' },
+            { code: 'management_sales_expenses', name: '管理费用&销售费用' },
+            { code: 'finance_expenses', name: '财务费用' },
+        ];
+        const assertionDefs = [
+            { code: 'C', label: '完整性（C）' },
+            { code: 'EO', label: '存在性/发生（E/O）' },
+            { code: 'VM', label: '计价/计量（V/M）' },
+            { code: 'RO', label: '权利和义务（R&O）' },
+            { code: 'PD', label: '列报和披露（P&D）' },
+        ];
+        const craOptions = ['minimal', 'low', 'moderate', 'high', 'N/A'];
+
+        function renderSubjectAssertionTable() {
+            const headerCells = ['科目'];
+            assertionDefs.forEach(item => {
+                headerCells.push(`${item.label} CRA`);
+                headerCells.push(`${item.label} Threshold %`);
+            });
+            let html = '<thead><tr>';
+            headerCells.forEach(text => {
+                html += `<th>${text}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            projectSubjects.forEach(subject => {
+                html += `<tr data-subject-code="${subject.code}">`;
+                html += `<td>${subject.name}</td>`;
+                assertionDefs.forEach(item => {
+                    html += `<td><select class="tiny-select" data-subject="${subject.code}" data-assertion="${item.code}" data-field="cra">`;
+                    html += '<option value=""></option>';
+                    craOptions.forEach(option => {
+                        html += `<option value="${option}">${option}</option>`;
+                    });
+                    html += `</select></td>`;
+                    html += `<td><input class="tiny-input" type="text" placeholder="如 75%" data-subject="${subject.code}" data-assertion="${item.code}" data-field="threshold"></td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody>';
+            subjectAssertionTable.innerHTML = html;
+        }
+
+        function normalizePercentageValue(value) {
+            if (value === null || value === undefined || value === '') return '';
+            const num = Number(value);
+            if (Number.isNaN(num)) return String(value);
+            const pct = num <= 1 ? num * 100 : num;
+            return `${Number(pct.toFixed(4))}%`;
+        }
+
+        function parseThresholdInput(value) {
+            const text = String(value || '').trim();
+            if (!text) return null;
+            const number = text.endsWith('%')
+                ? Number(text.slice(0, -1).trim()) / 100
+                : Number(text);
+            if (Number.isNaN(number) || number < 0 || number > 1) {
+                throw new Error('Threshold %必须介于0%到100%之间');
+            }
+            return number;
+        }
+
+        function fillSubjectAssertions(subjectAssertions) {
+            document.querySelectorAll('#subjectAssertionTable [data-subject][data-field="cra"]').forEach(el => {
+                el.value = '';
+            });
+            document.querySelectorAll('#subjectAssertionTable [data-subject][data-field="threshold"]').forEach(el => {
+                el.value = '';
+            });
+            if (!subjectAssertions) return;
+            Object.entries(subjectAssertions).forEach(([subjectCode, assertions]) => {
+                Object.entries(assertions || {}).forEach(([assertionCode, item]) => {
+                    const craEl = document.querySelector(`#subjectAssertionTable [data-subject="${subjectCode}"][data-assertion="${assertionCode}"][data-field="cra"]`);
+                    const thresholdEl = document.querySelector(`#subjectAssertionTable [data-subject="${subjectCode}"][data-assertion="${assertionCode}"][data-field="threshold"]`);
+                    if (craEl) craEl.value = item && item.cra ? item.cra : '';
+                    if (thresholdEl) thresholdEl.value = item && item.threshold_pct !== null && item.threshold_pct !== undefined ? normalizePercentageValue(item.threshold_pct) : '';
+                });
+            });
+        }
+
+        function buildSubjectAssertions() {
+            const subjectAssertions = {};
+            let hasAny = false;
+            for (const subject of projectSubjects) {
+                const rowData = {};
+                let subjectTouched = false;
+                for (const assertion of assertionDefs) {
+                    const craEl = document.querySelector(`#subjectAssertionTable [data-subject="${subject.code}"][data-assertion="${assertion.code}"][data-field="cra"]`);
+                    const thresholdEl = document.querySelector(`#subjectAssertionTable [data-subject="${subject.code}"][data-assertion="${assertion.code}"][data-field="threshold"]`);
+                    const cra = craEl ? craEl.value.trim() : '';
+                    const thresholdRaw = thresholdEl ? thresholdEl.value.trim() : '';
+                    if (!cra && !thresholdRaw) {
+                        rowData[assertion.code] = {};
+                        continue;
+                    }
+                    subjectTouched = true;
+                    if (!cra) throw new Error(`${subject.name}-${assertion.label}请填写CRA`);
+                    if (cra !== 'N/A' && !thresholdRaw) throw new Error(`${subject.name}-${assertion.label}请填写Threshold %`);
+                    if (cra === 'N/A' && thresholdRaw) throw new Error(`${subject.name}-${assertion.label}为N/A时Threshold %必须留空`);
+                    let threshold = null;
+                    if (thresholdRaw) {
+                        try {
+                            threshold = parseThresholdInput(thresholdRaw);
+                        } catch (err) {
+                            throw new Error(`${subject.name}-${assertion.label}的${err.message}`);
+                        }
+                    }
+                    rowData[assertion.code] = {
+                        cra,
+                        threshold_pct: threshold
+                    };
+                }
+                if (subjectTouched) {
+                    hasAny = true;
+                    subjectAssertions[subject.code] = rowData;
+                }
+            }
+            return hasAny ? subjectAssertions : null;
+        }
+
+        function buildProjectBasicInfo() {
+            return {
+                balance_sheet_date: balanceSheetDateInput.value,
+                client_name: clientNameInput.value.trim(),
+                fiscal_year: fiscalYearInput.value.trim()
+            };
+        }
+
+        function updateBaselineControls() {
+            const useManualForTeSad = teSadSourceSelect.value === 'manual';
+            const useA3 = useA3MappingInput.value === 'mapping';
+            manualTeSadPanel.style.display = useManualForTeSad ? '' : 'none';
+            a3FilePanel.style.display = useA3 ? '' : 'none';
+            extractBaselineActions.style.display = useA3 ? '' : 'none';
+        }
+
+        function updateProjectConfigMode() {
+            const mode = projectConfigModeSelect.value;
+            manualProjectConfigPanel.hidden = mode !== 'manual';
+            manualProjectAssertionPanel.hidden = mode !== 'manual';
+            uploadProjectConfigPanel.hidden = mode !== 'upload';
+            mappingProjectConfigPanel.hidden = mode !== 'mapping';
+        }
+
+        async function loadProjectOptions() {
+            const resp = await fetch('/api/projects');
+            const data = await resp.json();
+            projectRecords = data.projects || [];
+            projectCodeOptions.innerHTML = '';
+            projectRecords.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.project_code;
+                option.label = project.project_code;
+                projectCodeOptions.appendChild(option);
+            });
+        }
+
+        function updateMappingMethodFields(prefix) {
+            const methodSelect = document.getElementById(`${prefix}MethodSelect`);
+            const cellFields = document.getElementById(`${prefix}CellFields`);
+            const keywordFields = document.getElementById(`${prefix}KeywordFields`);
+            const useCell = methodSelect.value === 'cell';
+            cellFields.hidden = !useCell;
+            keywordFields.hidden = useCell;
+        }
+
+        function buildValueMapping(prefix, label) {
+            const method = document.getElementById(`${prefix}MethodSelect`).value;
+            const sheet = document.getElementById(`${prefix}SheetInput`).value.trim();
+            if (!sheet && !document.getElementById(`${prefix}CellInput`).value.trim()
+                && !document.getElementById(`${prefix}RowKeywordInput`).value.trim()
+                && !document.getElementById(`${prefix}ColKeywordInput`).value.trim()) {
+                return null;
+            }
+            if (!sheet) throw new Error(`${label}请填写Sheet名称`);
+            if (method === 'cell') {
+                const cell = document.getElementById(`${prefix}CellInput`).value.trim().toUpperCase();
+                if (!cell) throw new Error(`${label}请填写单元格`);
+                return { method, sheet, cell };
+            }
+            const rowKeyword = document.getElementById(`${prefix}RowKeywordInput`).value.trim();
+            const colKeyword = document.getElementById(`${prefix}ColKeywordInput`).value.trim();
+            if (!rowKeyword || !colKeyword) throw new Error(`${label}请填写行关键词和列关键词`);
+            return {
+                method,
+                sheet,
+                row_keyword: rowKeyword,
+                col_keyword: colKeyword
+            };
+        }
+
+        function buildProjectMapping() {
+            if (projectConfigModeSelect.value !== 'mapping') {
+                return null;
+            }
+            const mapping = {};
+            const teMapping = buildValueMapping('te', 'TE');
+            const sadMapping = buildValueMapping('sad', 'SAD');
+            if (teMapping) mapping.te_mapping = teMapping;
+            if (sadMapping) mapping.sad_mapping = sadMapping;
+            const a3Values = [
+                a3SheetInput.value.trim(),
+                a3SubjectColInput.value.trim(),
+                a3BookColInput.value.trim(),
+                a3AuditedColInput.value.trim(),
+                a3PriorColInput.value.trim()
+            ];
+            if (a3Values.some(Boolean)) {
+                if (a3Values.some(value => !value)) throw new Error('A3请填写完整的Sheet和列配置');
+                mapping.a3_mapping = {
+                    sheet: a3Values[0],
+                    subject_name_col: a3Values[1].toUpperCase(),
+                    book_amount_col: a3Values[2].toUpperCase(),
+                    audited_amount_col: a3Values[3].toUpperCase(),
+                    prior_audited_amount_col: a3Values[4].toUpperCase()
+                };
+            }
+            return Object.keys(mapping).length ? mapping : null;
+        }
+
+        function fillValueMapping(prefix, mapping) {
+            const method = mapping && mapping.method ? mapping.method : 'cell';
+            document.getElementById(`${prefix}MethodSelect`).value = method;
+            document.getElementById(`${prefix}SheetInput`).value = mapping && mapping.sheet ? mapping.sheet : '';
+            document.getElementById(`${prefix}CellInput`).value = mapping && mapping.cell ? mapping.cell : '';
+            document.getElementById(`${prefix}RowKeywordInput`).value = mapping && mapping.row_keyword ? mapping.row_keyword : '';
+            document.getElementById(`${prefix}ColKeywordInput`).value = mapping && mapping.col_keyword ? mapping.col_keyword : '';
+            updateMappingMethodFields(prefix);
+        }
+
+        function fillProjectConfig(project) {
+            const info = project.basic_info || {};
+            const mapping = project.mapping || {};
+            projectConfigCodeInput.value = project.project_code || '';
+            balanceSheetDateInput.value = info.balance_sheet_date || '';
+            pmInput.value = project.materiality && project.materiality.pm !== undefined ? project.materiality.pm : '';
+            teInput.value = project.materiality && project.materiality.te !== undefined ? project.materiality.te : '';
+            sadInput.value = project.materiality && project.materiality.sad !== undefined ? project.materiality.sad : '';
+            clientNameInput.value = info.client_name || '';
+            fiscalYearInput.value = info.fiscal_year || '';
+            fillValueMapping('te', mapping.te_mapping || {});
+            fillValueMapping('sad', mapping.sad_mapping || {});
+            a3SheetInput.value = mapping.a3_mapping && mapping.a3_mapping.sheet ? mapping.a3_mapping.sheet : '';
+            a3SubjectColInput.value = mapping.a3_mapping && mapping.a3_mapping.subject_name_col ? mapping.a3_mapping.subject_name_col : '';
+            a3BookColInput.value = mapping.a3_mapping && mapping.a3_mapping.book_amount_col ? mapping.a3_mapping.book_amount_col : '';
+            a3AuditedColInput.value = mapping.a3_mapping && mapping.a3_mapping.audited_amount_col ? mapping.a3_mapping.audited_amount_col : '';
+            a3PriorColInput.value = mapping.a3_mapping && mapping.a3_mapping.prior_audited_amount_col ? mapping.a3_mapping.prior_audited_amount_col : '';
+            fillSubjectAssertions(project.subject_assertions || {});
+        }
+
+        function clearExtractedBaseline() {
+            extractedBaseline = {};
+            baselinePreview.textContent = '';
+            baselinePreview.style.display = 'none';
+            baselineStatus.textContent = '';
+        }
+
+        function hasExtractedValue(valueObj) {
+            return valueObj && valueObj.value !== null && valueObj.value !== undefined && valueObj.value !== '';
+        }
+
+        function hasManualNumber(input) {
+            return input.value !== '' && !Number.isNaN(Number(input.value));
+        }
+
+        function buildBaselineForCheck() {
+            const baseline = {};
+            if (teSadSourceSelect.value === 'project_config') {
+                return baseline;
+            }
+            if (teSadSourceSelect.value === 'manual') {
+                if (!hasManualNumber(manualTeInput) || !hasManualNumber(manualSadInput)) {
+                    throw new Error('请手动输入TE和SAD');
+                }
+                baseline.te = { value: Number(manualTeInput.value), source: { method: 'manual' } };
+                baseline.sad = { value: Number(manualSadInput.value), source: { method: 'manual' } };
+            }
+
+            if (useA3MappingInput.value === 'mapping') {
+                if (!extractedBaseline.a3 || Object.keys(extractedBaseline.a3).length === 0) {
+                    throw new Error('请先从最新版A3表提取A3基准值');
+                }
+                baseline.a3 = extractedBaseline.a3;
+            }
+            return baseline;
+        }
+
+        teSadSourceSelect.addEventListener('change', updateBaselineControls);
+        useA3MappingInput.addEventListener('change', updateBaselineControls);
+        projectConfigModeSelect.addEventListener('change', updateProjectConfigMode);
+        teMethodSelect.addEventListener('change', () => updateMappingMethodFields('te'));
+        sadMethodSelect.addEventListener('change', () => updateMappingMethodFields('sad'));
+        projectCodeInput.addEventListener('input', clearExtractedBaseline);
+        a3FileInput.addEventListener('change', clearExtractedBaseline);
+        subjectSelect.addEventListener('change', clearExtractedBaseline);
+        updateBaselineControls();
+        updateProjectConfigMode();
+        updateMappingMethodFields('te');
+        updateMappingMethodFields('sad');
+        renderSubjectAssertionTable();
+        loadProjectOptions().catch(e => console.error('加载项目配置失败', e));
+
+        downloadProjectTemplateBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.href = '/api/projects/template';
+            link.download = '项目基础信息配置模板.xlsx';
+            link.click();
+        });
+
+        importProjectConfigBtn.addEventListener('click', async () => {
+            try {
+                if (!projectConfigFileInput.files.length) throw new Error('请先选择项目配置Excel文件');
+                const formData = new FormData();
+                formData.append('file', projectConfigFileInput.files[0]);
+                const resp = await fetch('/api/projects/import/preview', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.detail || '解析失败');
+                fillProjectConfig(data.project || {});
+                projectConfigModeSelect.value = 'upload';
+                updateProjectConfigMode();
+                projectConfigImportStatus.style.color = '#2e7d32';
+                projectConfigImportStatus.textContent = data.will_update_existing ? '已解析，将更新已有项目' : '已解析，可直接保存';
+                projectMappingStatus.style.color = '#2e7d32';
+                projectMappingStatus.textContent = '已从Excel回填，点击保存项目配置';
+                projectConfigImportPreview.style.display = 'block';
+                projectConfigImportPreview.textContent = JSON.stringify(data.project, null, 2);
+            } catch (err) {
+                projectConfigImportStatus.style.color = '#c62828';
+                projectConfigImportStatus.textContent = err.message;
+            }
+        });
+
+        saveProjectBtn.addEventListener('click', async () => {
+            try {
+                const projectCode = projectConfigCodeInput.value.trim();
+                const mapping = buildProjectMapping();
+                const subjectAssertions = buildSubjectAssertions();
+                const basicInfo = buildProjectBasicInfo();
+                const materialityValues = [pmInput.value, teInput.value, sadInput.value];
+                const materiality = materialityValues.some(v => v !== '')
+                    ? {
+                        pm: pmInput.value === '' ? null : Number(pmInput.value),
+                        te: teInput.value === '' ? null : Number(teInput.value),
+                        sad: sadInput.value === '' ? null : Number(sadInput.value)
+                    }
+                    : null;
+                const resp = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        project_code: projectCode,
+                        basic_info: basicInfo,
+                        materiality,
+                        subject_assertions: subjectAssertions,
+                        mapping
+                    })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.detail || '保存失败');
+                projectMappingStatus.style.color = '#2e7d32';
+                projectMappingStatus.textContent = '已保存';
+                projectCodeInput.value = projectCode;
+                await loadProjectOptions();
+            } catch (err) {
+                projectMappingStatus.style.color = '#c62828';
+                projectMappingStatus.textContent = err.message;
+            }
+        });
+
+        loadProjectBtn.addEventListener('click', async () => {
+            try {
+                const projectCode = projectConfigCodeInput.value.trim();
+                await loadProjectOptions();
+                const project = projectRecords.find(p => p.project_code === projectCode);
+                if (!project) throw new Error('未找到该项目');
+                fillProjectConfig(project);
+                projectMappingStatus.style.color = '#2e7d32';
+                projectMappingStatus.textContent = '已读取';
+            } catch (err) {
+                projectMappingStatus.style.color = '#c62828';
+                projectMappingStatus.textContent = err.message;
+            }
+        });
+
+        async function extractBaselinePart(projectCode, file, includeTeSad, includeA3) {
+            const formData = new FormData();
+            formData.append('project_code', projectCode);
+            formData.append('subject', subjectSelect.value);
+            formData.append('include_te_sad', includeTeSad ? 'true' : 'false');
+            formData.append('include_a3', includeA3 ? 'true' : 'false');
+            formData.append('file', file);
+            const resp = await fetch('/api/baseline/extract', { method: 'POST', body: formData });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || '提取失败');
+            return data.baseline || {};
+        }
+
+        extractBaselineBtn.addEventListener('click', async () => {
+            try {
+                const projectCode = projectCodeInput.value.trim();
+                const useA3 = useA3MappingInput.value === 'mapping';
+                if (!projectCode) throw new Error('请先输入项目代码');
+                if (useA3 && !a3FileInput.files.length) throw new Error('请上传最新版A3表');
+
+                extractedBaseline = {};
+                if (useA3) {
+                    const a3Baseline = await extractBaselinePart(projectCode, a3FileInput.files[0], false, true);
+                    Object.assign(extractedBaseline, a3Baseline);
+                }
+                baselinePreview.textContent = JSON.stringify(extractedBaseline, null, 2);
+                baselinePreview.style.display = 'block';
+                baselineStatus.style.color = '#2e7d32';
+                baselineStatus.textContent = '提取完成，请确认预览值';
+            } catch (err) {
+                baselineStatus.style.color = '#c62828';
+                baselineStatus.textContent = err.message;
+            }
+        });
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.name.endsWith('.xlsx')) {
+                fileInfo.innerHTML = '<span class="file-icon">⚠️</span> 请选择 .xlsx 格式的文件';
+                fileInfo.style.background = '#fff3e0';
+                fileInfo.style.color = '#f57c00';
+                checkBtn.disabled = true;
+                return;
+            }
+            selectedFile = file;
+            fileInfo.innerHTML = `<span class="file-icon">✅</span> 已选择: <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB)`;
+            fileInfo.style.background = '#f8f9fa';
+            fileInfo.style.color = '#333';
+            checkBtn.disabled = false;
+        }
+
+        // 质检请求
+        checkBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            if (teSadSourceSelect.value === 'project_config' && !projectCodeInput.value.trim()) {
+                alert('请选择或输入项目代码');
+                return;
+            }
+
+            let baselineForCheck = {};
+            try {
+                baselineForCheck = buildBaselineForCheck();
+            } catch (err) {
+                alert(err.message);
+                return;
+            }
+
+            loading.classList.add('visible');
+            resultSection.classList.remove('visible');
+            checkBtn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                const todCheckbox = document.getElementById('todCheckbox');
+                const todFileInput = document.getElementById('todFileInput');
+                if (todCheckbox.checked && todFileInput.files.length > 0) {
+                    formData.append('tod_file', todFileInput.files[0]);
+                }
+                formData.append('subject', subjectSelect.value);
+                formData.append('project_code', projectCodeInput.value.trim());
+                formData.append('te_sad_source', teSadSourceSelect.value);
+                formData.append('te_sad_enabled', teSadSourceSelect.value !== 'none' ? 'true' : 'false');
+                formData.append('a3_enabled', useA3MappingInput.value === 'mapping' ? 'true' : 'false');
+                formData.append('enable_ai', document.getElementById('uploadEnableAi').checked ? 'true' : 'false');
+                if (Object.keys(baselineForCheck).length > 0) {
+                    formData.append('baseline_json', JSON.stringify(baselineForCheck));
+                }
+                if (teSadSourceSelect.value === 'manual') {
+                    if (manualTeInput.value) formData.append('manual_te', manualTeInput.value);
+                    if (manualSadInput.value) formData.append('manual_sad', manualSadInput.value);
+                }
+
+                const response = await fetch('/api/check', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorMsg = '质检失败';
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorMsg = errorJson.detail || errorText;
+                    } catch (e) {
+                        errorMsg = errorText;
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                const result = await response.json();
+                displayResult(result);
+            } catch (error) {
+                console.error('质检错误:', error);
+                alert('质检失败: ' + error.message);
+            } finally {
+                loading.classList.remove('visible');
+                checkBtn.disabled = false;
+            }
+        });
+
+        // 显示结果
+        let allIssues = [];
+        function displayResult(result) {
+            allIssues = result.issues;
+            // 暴露给弹窗点击事件使用
+            window._detailIssues = result.issues;
+            window._detailPassed = (result.execution_records && result.execution_records.passed) || [];
+            const rs = result.rule_summary;
+
+            // 规则状态汇总卡片
+            document.getElementById('ruleTotalCount').textContent = rs.total;
+            document.getElementById('passedCount').textContent = rs.passed;
+            document.getElementById('failedCount').textContent = rs.failed;
+            document.getElementById('skippedCount').textContent = rs.skipped;
+
+            // AI未启用卡片
+            if (rs.ai_disabled > 0) {
+                document.getElementById('aiDisabledCard').style.display = '';
+                document.getElementById('aiDisabledCount').textContent = rs.ai_disabled;
+                document.getElementById('aiDisabledTab').style.display = '';
+            } else {
+                document.getElementById('aiDisabledCard').style.display = 'none';
+                document.getElementById('aiDisabledTab').style.display = 'none';
+            }
+
+            // 问题严重度统计
+            document.getElementById('totalCount').textContent = result.total_issues;
+            document.getElementById('highCount').textContent = result.high;
+            document.getElementById('mediumCount').textContent = result.medium;
+            document.getElementById('lowCount').textContent = result.low;
+            document.getElementById('reviewCount').textContent = result.review;
+
+            // Tab badge
+            document.getElementById('issuesTabBadge').textContent = rs.failed;
+            document.getElementById('passedTabBadge').textContent = rs.passed;
+            document.getElementById('skippedTabBadge').textContent = rs.skipped;
+            document.getElementById('aiDisabledTabBadge').textContent = rs.ai_disabled;
+
+            // 渲染各Tab内容
+            renderIssuesTable(result.issues);
+            renderPassedTable(result.execution_records.passed);
+            renderSkippedTable(result.execution_records.skipped);
+            renderAiDisabledTable(result.execution_records.ai_disabled);
+
+            // 默认显示问题项Tab
+            document.querySelector('.tab-item[data-tab="issues"]').click();
+
+            const downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.onclick = () => {
+                window.location.href = `/api/download/${result.output_file}`;
+            };
+
+            resultSection.classList.add('visible');
+        }
+
+        // Tab切换
+        document.getElementById('tabNav').addEventListener('click', (e) => {
+            const tabItem = e.target.closest('.tab-item');
+            if (!tabItem) return;
+            const tabName = tabItem.dataset.tab;
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            tabItem.classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        });
+
+        function renderIssuesTable(issues) {
+            const tbody = document.getElementById('issuesBody');
+            tbody.innerHTML = '';
+            issues.forEach((issue, index) => {
+                const tr = document.createElement('tr');
+                const severityClass = issue.severity === '高' ? 'high' :
+                                     issue.severity === '中' ? 'medium' :
+                                     issue.severity === '需review' ? 'review' : 'low';
+                const hasDetail = !!issue.execution_detail;
+                const originalIdx = allIssues.indexOf(issue);
+                const clickIdx = originalIdx >= 0 ? originalIdx : index;
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${issue.rule_id}</td>
+                    <td>${issue.rule_name}</td>
+                    <td>${issue.category}</td>
+                    <td><span class="severity-tag ${severityClass}">${issue.severity}</span></td>
+                    <td>${issue.sheet}</td>
+                    <td>${issue.cell}</td>
+                    <td>${issue.message}</td>
+                    <td>${issue.ai_suggestion || ''}</td>
+                    <td>${hasDetail ? '<button class="btn-detail" data-detail="' + clickIdx + '">查看详情</button>' : ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            // 绑定弹窗点击事件
+            tbody.querySelectorAll('.btn-detail').forEach(el => {
+                el.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.detail);
+                    const item = window._detailIssues[idx];
+                    if (item) {
+                        showDetailModal(item.rule_id, item.rule_name, item.execution_detail);
+                    }
+                });
+            });
+        }
+
+        function renderPassedTable(records) {
+            const tbody = document.getElementById('passedBody');
+            tbody.innerHTML = '';
+            // 将 passed 记录也暴露到 window 方便点击查找
+            window._detailPassed = records;
+            records.forEach((r, index) => {
+                const tr = document.createElement('tr');
+                const hasDetail = !!r.execution_detail;
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${r.rule_id}</td>
+                    <td>${r.rule_name}</td>
+                    <td>${r.category}</td>
+                    <td><span class="severity-tag low">检查通过</span></td>
+                    <td>${r.sheet || ''}</td>
+                    <td>${r.cell || ''}</td>
+                    <td>${hasDetail ? '<button class="btn-detail" data-passed-idx="' + index + '">查看详情</button>' : ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            // 绑定弹窗点击事件
+            tbody.querySelectorAll('.btn-detail').forEach(el => {
+                el.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.passedIdx);
+                    const item = window._detailPassed[idx];
+                    if (item && item.execution_detail) {
+                        showDetailModal(item.rule_id, item.rule_name, item.execution_detail);
+                    }
+                });
+            });
+        }
+
+        function renderSkippedTable(records) {
+            const tbody = document.getElementById('skippedBody');
+            tbody.innerHTML = '';
+            records.forEach((r, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${r.rule_id}</td>
+                    <td>${r.rule_name}</td>
+                    <td>${r.category}</td>
+                    <td>${r.reason || ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderAiDisabledTable(records) {
+            const tbody = document.getElementById('aiDisabledBody');
+            tbody.innerHTML = '';
+            records.forEach((r, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${r.rule_id}</td>
+                    <td>${r.rule_name}</td>
+                    <td>${r.category}</td>
+                    <td>${r.reason || ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 搜索筛选
+        const filterInput = document.getElementById('filterInput');
+        filterInput.addEventListener('input', (e) => {
+            const keyword = e.target.value.toLowerCase();
+            const filtered = allIssues.filter(issue =>
+                issue.rule_id.toLowerCase().includes(keyword) ||
+                issue.rule_name.toLowerCase().includes(keyword) ||
+                issue.message.toLowerCase().includes(keyword)
+            );
+            renderIssuesTable(filtered);
+        });
+
+        // ========== 系统设置 ==========
+        const cfgApiKey = document.getElementById('cfgApiKey');
+        const cfgModel = document.getElementById('cfgModel');
+        const cfgBaseUrl = document.getElementById('cfgBaseUrl');
+        const cfgKeyStatus = document.getElementById('cfgKeyStatus');
+        const configStatus = document.getElementById('configStatus');
+        const cfgUpdateSource = document.getElementById('cfgUpdateSource');
+        const cfgCurrentVersion = document.getElementById('cfgCurrentVersion');
+        const cfgDataDir = document.getElementById('cfgDataDir');
+        const updateSourceStatus = document.getElementById('updateSourceStatus');
+
+        // 跟踪用户是否手动修改了API密钥输入框
+        let cfgApiKeyModified = false;
+        cfgApiKey.addEventListener('input', () => { cfgApiKeyModified = true; });
+
+        // 密码显隐切换
+        document.getElementById('toggleKeyBtn').addEventListener('click', () => {
+            const btn = document.getElementById('toggleKeyBtn');
+            if (cfgApiKey.type === 'password') {
+                cfgApiKey.type = 'text';
+                btn.textContent = '隐藏';
+            } else {
+                cfgApiKey.type = 'password';
+                btn.textContent = '显示';
+            }
+        });
+
+        // 页面加载时获取配置
+        async function loadConfig() {
+            try {
+                const [resp, launcherResp] = await Promise.all([
+                    fetch('/api/config'),
+                    fetch('/api/launcher-config')
+                ]);
+                const cfg = await resp.json();
+                const launcherCfg = await launcherResp.json();
+                if (cfg.api_key_set) {
+                    cfgApiKey.value = '';
+                    cfgApiKey.placeholder = cfg.api_key_display;
+                    cfgApiKeyModified = false;
+                    cfgKeyStatus.textContent = '已配置API密钥';
+                    cfgKeyStatus.style.color = '#388e3c';
+                }
+                cfgModel.value = cfg.model || '';
+                if (cfg.base_url) cfgBaseUrl.value = cfg.base_url;
+                cfgUpdateSource.value = launcherCfg.update_source || '';
+                cfgCurrentVersion.value = launcherCfg.current_version || '';
+                cfgDataDir.value = launcherCfg.data_dir || '';
+                document.getElementById('sidebarVersion').textContent = launcherCfg.current_version || '未知';
+                document.getElementById('aboutVersion').textContent = launcherCfg.current_version || '';
+                document.getElementById('aboutDataDir').textContent = launcherCfg.data_dir || '';
+                if (launcherCfg.update_source) {
+                    updateSourceStatus.textContent = launcherCfg.source_accessible
+                        ? '共享路径连接正常'
+                        : '当前无法访问共享路径，本地版本仍可使用';
+                    updateSourceStatus.style.color = launcherCfg.source_accessible ? '#388e3c' : '#f57c00';
+                }
+            } catch (e) {
+                console.error('加载配置失败', e);
+            }
+        }
+
+        // 页面首次打开时显示版本信息
+        loadConfig();
+
+        // 点击导航到设置页时加载配置
+        document.querySelector('[data-page="settings"]').addEventListener('click', loadConfig);
+
+        document.getElementById('saveUpdateSourceBtn').addEventListener('click', async () => {
+            const updateSource = cfgUpdateSource.value.trim();
+            if (!updateSource) {
+                updateSourceStatus.textContent = '请填写公司共享版本文件夹';
+                updateSourceStatus.style.color = '#d32f2f';
+                return;
+            }
+            updateSourceStatus.textContent = '正在测试路径...';
+            updateSourceStatus.style.color = '#666';
+            try {
+                const resp = await fetch('/api/launcher-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ update_source: updateSource })
+                });
+                const result = await resp.json();
+                updateSourceStatus.textContent = result.message;
+                updateSourceStatus.style.color = result.source_accessible ? '#388e3c' : '#f57c00';
+            } catch (e) {
+                updateSourceStatus.textContent = '保存失败：' + e.message;
+                updateSourceStatus.style.color = '#d32f2f';
+            }
+        });
+
+        // 保存配置
+        document.getElementById('saveConfigBtn').addEventListener('click', async () => {
+            const model = cfgModel.value.trim();
+
+            // 只有用户手动修改了密钥输入框才使用新值，否则传空让后端保留旧密钥
+            let finalKey = '';
+            if (cfgApiKeyModified) {
+                finalKey = cfgApiKey.value.trim();
+                if (!finalKey) {
+                    configStatus.textContent = '请填写API密钥';
+                    configStatus.style.color = '#d32f2f';
+                    return;
+                }
+            }
+            if (!model) {
+                configStatus.textContent = '请填写模型名称';
+                configStatus.style.color = '#d32f2f';
+                return;
+            }
+
+            const config = {
+                provider: 'auto',
+                api_key: finalKey,
+                model: model,
+                base_url: cfgBaseUrl.value,
+                enable_ai_check: true
+            };
+
+            try {
+                configStatus.textContent = '保存中...';
+                configStatus.style.color = '#666';
+                const resp = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                if (resp.ok) {
+                    configStatus.textContent = '配置已保存';
+                    configStatus.style.color = '#388e3c';
+                    setTimeout(() => { configStatus.textContent = ''; }, 3000);
+                } else {
+                    throw new Error('保存失败');
+                }
+            } catch (e) {
+                configStatus.textContent = '保存失败: ' + e.message;
+                configStatus.style.color = '#d32f2f';
+            }
+        });
+
+        // 测试连接
+        document.getElementById('testConfigBtn').addEventListener('click', async () => {
+            const model = cfgModel.value.trim();
+
+            let finalKey = '';
+            if (cfgApiKeyModified) {
+                finalKey = cfgApiKey.value.trim();
+                if (!finalKey) {
+                    configStatus.textContent = '请填写API密钥';
+                    configStatus.style.color = '#d32f2f';
+                    return;
+                }
+            }
+            if (!model) {
+                configStatus.textContent = '请填写模型名称';
+                configStatus.style.color = '#d32f2f';
+                return;
+            }
+
+            const config = {
+                provider: 'auto',
+                api_key: finalKey,
+                model: model,
+                base_url: cfgBaseUrl.value,
+                enable_ai_check: true
+            };
+
+            try {
+                configStatus.textContent = '测试连接中...';
+                configStatus.style.color = '#666';
+                const resp = await fetch('/api/config/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const result = await resp.json();
+                if (result.success) {
+                    configStatus.textContent = result.message;
+                    configStatus.style.color = '#388e3c';
+                } else {
+                    configStatus.textContent = result.message;
+                    configStatus.style.color = '#d32f2f';
+                }
+            } catch (e) {
+                configStatus.textContent = '测试失败: ' + e.message;
+                configStatus.style.color = '#d32f2f';
+            }
+        });
+
+        // ========== 核对逻辑弹窗 ==========
+        function showDetailModal(ruleId, ruleName, detailText) {
+            document.getElementById('modalTitle').textContent = '核对逻辑详情：' + ruleName;
+            document.getElementById('modalRuleId').textContent = '规则ID: ' + ruleId;
+            document.getElementById('modalBody').textContent = detailText || '暂无详细信息';
+            document.getElementById('detailModal').classList.add('visible');
+        }
+
+        function hideDetailModal() {
+            document.getElementById('detailModal').classList.remove('visible');
+        }
+
+        // 弹窗关闭事件
+        document.getElementById('modalCloseBtn').addEventListener('click', hideDetailModal);
+        document.getElementById('detailModal').addEventListener('click', function(e) {
+            if (e.target === this) hideDetailModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') hideDetailModal();
+        });
+    })();
+    </script>
+</body>
+</html>
