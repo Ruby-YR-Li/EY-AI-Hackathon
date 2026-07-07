@@ -41,8 +41,6 @@ RULE_LABELS: list[tuple[str, str]] = [
     ("tod_key_items", "TOD 关键项(KI)"),
     ("tod_negative", "TOD 负值处理"),
     ("missing_sheets", "缺失标准Sheet"),
-    ("tb_bkd_match", "TB/BKD 科目比对"),
-    ("gl_scan", "序时账关键词扫描"),
 ]
 
 RULE_RUN_ORDER: list[tuple[str, str]] = [
@@ -59,8 +57,6 @@ RULE_RUN_ORDER: list[tuple[str, str]] = [
     ("tod_key_items", "TOD 关键项(KI)"),
     ("tod_negative", "TOD 负值处理"),
     ("missing_sheets", "缺失标准 Sheet"),
-    ("tb_bkd_match", "科目余额表 / BKD 比对"),
-    ("gl_scan", "序时账关键词扫描"),
 ]
 
 
@@ -244,9 +240,9 @@ def render_sidebar() -> tuple[set[str], LLMConfig | None]:
 
 
 # ── main area: upload + run ──────────────────────────────────────
-def _detect_files(uploaded) -> tuple[list[Path], Path | None, Path | None, Path | None, Path | None]:
+def _detect_files(uploaded) -> tuple[list[Path], Path | None, Path | None]:
     """解析上传文件并返回路径。"""
-    main_path = tod_path = tb_path = gl_path = None
+    main_path = tod_path = None
     all_paths: list[Path] = []
 
     for uf in uploaded:
@@ -259,16 +255,11 @@ def _detect_files(uploaded) -> tuple[list[Path], Path | None, Path | None, Path 
             main_path = tmp
         elif ft == "tod" and not tod_path:
             tod_path = tmp
-        name_lower = uf.name.lower()
-        if "科目余额" in name_lower or "tb" in name_lower:
-            tb_path = tmp
-        if "序时账" in name_lower or "gl" in name_lower or "明细账" in name_lower:
-            gl_path = tmp
 
-    return all_paths, main_path, tod_path, tb_path, gl_path
+    return all_paths, main_path, tod_path
 
 
-def render_upload_zone() -> tuple[list[Path], Path | None, Path | None, Path | None, Path | None]:
+def render_upload_zone() -> tuple[list[Path], Path | None, Path | None]:
     """主区域的上传区。"""
     uploaded = st.file_uploader(
         "选择底稿文件",
@@ -278,7 +269,7 @@ def render_upload_zone() -> tuple[list[Path], Path | None, Path | None, Path | N
         key="main_uploader",
     )
 
-    all_paths, main_path, tod_path, tb_path, gl_path = _detect_files(uploaded or [])
+    all_paths, main_path, tod_path = _detect_files(uploaded or [])
 
     if not uploaded:
         st.markdown("""
@@ -289,7 +280,7 @@ def render_upload_zone() -> tuple[list[Path], Path | None, Path | None, Path | N
           一套底稿 = 主底稿（VC&VD）+ TOD底稿（可选），系统自动识别分类</div>
         </div>
         """, unsafe_allow_html=True)
-        return all_paths, main_path, tod_path, tb_path, gl_path
+        return all_paths, main_path, tod_path
 
     # 显示文件识别状态
     st.markdown('<div class="file-status">', unsafe_allow_html=True)
@@ -304,13 +295,8 @@ def render_upload_zone() -> tuple[list[Path], Path | None, Path | None, Path | N
     else:
         st.info("ℹ️ 未上传 TOD 底稿 · TOD 相关检查将跳过")
 
-    if tb_path:
-        st.success("✅ 科目余额表")
-    if gl_path:
-        st.success("✅ 序时账")
-
     st.markdown('</div>', unsafe_allow_html=True)
-    return all_paths, main_path, tod_path, tb_path, gl_path
+    return all_paths, main_path, tod_path
 
 
 def render_run_button(main_path: Path | None, enabled_rules: set[str], llm_config: LLMConfig | None) -> bool:
@@ -458,7 +444,7 @@ def main() -> None:
     enabled_rules, llm_config = render_sidebar()
 
     # ══ main area: upload → run → results ══
-    all_paths, main_path, tod_path, tb_path, gl_path = render_upload_zone()
+    all_paths, main_path, tod_path = render_upload_zone()
 
     run_clicked = render_run_button(main_path, enabled_rules, llm_config)
 
@@ -489,10 +475,6 @@ def main() -> None:
             files["main_workpaper"] = str(main_path)
         if tod_path:
             files["tod_workpaper"] = str(tod_path)
-        if tb_path:
-            files["trial_balance"] = str(tb_path)
-        if gl_path:
-            files["general_ledger"] = str(gl_path)
 
         step_idx = 0
         total_steps = len(RULE_RUN_ORDER) + 2
@@ -544,10 +526,6 @@ def main() -> None:
                 k = "tod"
             elif "缺失" in s or "Sheet" in s:
                 k = "missing_sheets"
-            elif "TB" in s or "科目余额" in s:
-                k = "tb_bkd_match"
-            elif "序时账" in s:
-                k = "gl_scan"
             else:
                 k = "other"
             notes_by_source.setdefault(k, []).append(n)

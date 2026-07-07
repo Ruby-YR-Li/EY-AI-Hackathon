@@ -13,7 +13,7 @@ from typing import Iterable, Sequence
 
 import openpyxl
 
-from llm_assistant import LLMConfig, call_deepseek_json, confidence_text
+from llm_assistant import LLMConfig
 
 try:
     from docx import Document
@@ -28,16 +28,12 @@ SOP_DIR = ROOT / "资料库" / "SOP"
 DEFAULT_FILES = {
     "main_workpaper": DATA_DIR / "U_exp SWP VC&VD 20251231 .xlsx",
     "tod_workpaper": DATA_DIR / "TOD SWP U_Exp 20251231 .xlsx",
-    "trial_balance": DATA_DIR / "1253、202512科目余额表（更新） (1).xlsx",
-    "general_ledger": DATA_DIR / "1253、202512序时账（更新） (1).xlsx",
     "program_doc": DATA_DIR / "审计程序要求.docx",
     "sop_workbook": SOP_DIR / "FY26_SOP U_exp SWP VC&VD.xlsx",
 }
 
 LEGAL_KEYWORDS = ("法律", "律师", "诉讼", "咨询", "中介")
 INTERNAL_SHEET_PREFIXES = ("Skywind", "DS_INTERNAL")
-GL_KEYWORDS = LEGAL_KEYWORDS + ("赔偿", "罚款", "处罚", "关联方", "调整", "暂估", "冲销", "补提")
-MAX_LLM_CANDIDATES = 30
 
 
 @dataclass
@@ -900,20 +896,6 @@ def review_missing_sheets(wb, file: Path) -> list[ReviewNote]:
     return notes
 
 
-def collect_bkd_accounts(wb) -> set[str]:
-    accounts: set[str] = set()
-    for sheet in ("VC.00 销售费用BKD", "VD.00 管理费用BKD"):
-        if sheet not in wb.sheetnames:
-            continue
-        ws = wb[sheet]
-        header_row = find_header_row(ws, "科目名称") or 29
-        for row in range(header_row + 1, ws.max_row + 1):
-            account = cell_text(ws.cell(row, 4).value)
-            if account and account not in {"合计", "总计"}:
-                accounts.add(account)
-    return accounts
-
-
 def review_missing_tod(main_path: Path) -> list[ReviewNote]:
     return [
         note(
@@ -929,216 +911,6 @@ def review_missing_tod(main_path: Path) -> list[ReviewNote]:
     ]
 
 
-def llm_notes_from_candidates(
-    *,
-    candidates: list[dict[str, object]],
-    config: LLMConfig | None,
-    task: str,
-    default_source: str,
-) -> tuple[list[ReviewNote], dict]:
-    """返回 (notes, llm_status)。
-
-    llm_status 格式: {"ok": bool, "status": str, "candidates_submitted": int}
-    失败信息不再混入 Review Notes，由调用方在 UI 中单独展示。
-    """
-    base_status = {"ok": False, "status": "LLM not called", "candidates_submitted": len(candidates)}
-    if not config or not config.is_available or not candidates:
-        return [], base_status
-    selected = candidates[:MAX_LLM_CANDIDATES]
-    judgements, api_status = call_deepseek_json(config=config, task=task, candidates=selected)
-    by_id = {str(item.get("candidate_id")): item for item in judgements}
-    notes: list[ReviewNote] = []
-    for candidate in selected:
-        item = by_id.get(str(candidate.get("candidate_id")))
-        if not item or not item.get("should_raise_note"):
-            continue
-        confidence = item.get("confidence", "")
-        risk_level = cell_text(item.get("risk_level")) or "Medium"
-        try:
-            conf_num = float(confidence)
-        except Exception:
-            conf_num = 0.0
-        if conf_num < 0.65:
-            risk_level = "Low"
-        elif conf_num < 0.8 and risk_level == "High":
-            risk_level = "Medium"
-        notes.append(
-            note(
-                risk_level if risk_level in {"High", "Medium", "Low"} else "Medium",
-                Path(cell_text(candidate.get("file"))),
-                cell_text(candidate.get("sheet")),
-                cell_text(candidate.get("location")),
-                cell_text(item.get("issue_type")) or cell_text(candidate.get("issue_type")),
-                cell_text(item.get("reason")) or cell_text(candidate.get("reason")),
-                cell_text(item.get("suggested_action")) or "请结合底稿和支持性资料进一步复核该候选事项。",
-                default_source,
-                judge_method="LLM Assist",
-                confidence=confidence_text(confidence),
-                evidence_summary=cell_text(candidate.get("evidence_summary")),
-            )
-        )
-    llm_ok = api_status == "LLM ok"
-    return notes, {
-        "ok": llm_ok,
-        "status": api_status,
-        "candidates_submitted": len(selected),
-        "notes_from_llm": len(notes),
-    }
-
-
-def _is_expense_parent_account(account: str) -> bool:
-    """判断一个科目是否为费用类的父级汇总科目（非叶子科目）。
-
-    TB 中父级科目如"销售费用"、"管理费用"仅作为汇总行，
-    BKD 中通常只列示明细科目，精确匹配会导致误报。
-    """
-    clean = account.strip().replace(" ", "")
-    # 如果科目名称正好是"销售费用"或"管理费用"（不含下级），则为父级
-    if clean in {"销售费用", "管理费用"}:
-        return True
-    # 如果包含分隔符(_、-、/)则大概率是叶子科目
-    if any(sep in clean for sep in ("_", "-", "/", "（")):
-        return False
-    # 其他情况：判断是否有明显的明细后缀
-    return len(clean) <= 6  # "销售费用_xxx" > 6 个字
-
-
-def review_trial_balance(tb_path: Path | None, main_wb, main_path: Path, llm_config: LLMConfig | None = None) -> list[ReviewNote]:
-    if not tb_path or not tb_path.exists():
-        return []  # 用户未上传，静默跳过
-
-    bkd_accounts = collect_bkd_accounts(main_wb)
-    wb = load_workbook(tb_path)
-    ws = wb[wb.sheetnames[0]]
-    notes: list[ReviewNote] = []
-    candidates: list[dict[str, object]] = []
-    rule_note_count = 0
-    for row_idx, row in enumerate(ws.iter_rows(min_row=3, values_only=True), start=3):
-        account = cell_text(row[1] if len(row) > 1 else None)
-        if not account or ("销售费用" not in account and "管理费用" not in account):
-            continue
-        # 父级汇总科目不直接报 Medium，仅进入候选列表供 LLM 辅助判断
-        is_parent = _is_expense_parent_account(account)
-        if is_parent:
-            if len(candidates) < MAX_LLM_CANDIDATES * 3:
-                candidates.append(
-                    {
-                        "candidate_id": f"tb-{row_idx}",
-                        "file": tb_path.name,
-                        "sheet": ws.title,
-                        "location": f"B{row_idx}",
-                        "issue_type": "TB/BKD 科目列示差异",
-                        "account_name": account,
-                        "amount": row[8] if len(row) > 8 else None,
-                        "reason": f"TB 中存在汇总科目 {account}，BKD 中未精确匹配同名科目（可能为父级汇总行）。",
-                        "evidence_summary": f"TB 行 {row_idx}：科目={account}（父级汇总），本年累计借方={row[8] if len(row) > 8 else None}",
-                    }
-                )
-            continue
-        if account not in bkd_accounts:
-            amount = row[8] if len(row) > 8 else None
-            if rule_note_count < 10:
-                notes.append(
-                    note(
-                        "Medium",
-                        tb_path,
-                        ws.title,
-                        f"B{row_idx}",
-                        "TB 科目可能未在 BKD 列示",
-                        f"科目余额表存在费用科目“{account}”，但未在销售费用/管理费用 BKD 科目列示中匹配到同名科目。",
-                        "核对该科目是否应纳入 BKD；如属于重分类、合并列示或非审计范围，请在底稿中说明对应关系。",
-                        "科目余额表 + BKD 科目列示",
-                        evidence_summary=f"TB 行 {row_idx}：科目={account}，本年累计借方={amount}",
-                    )
-                )
-                rule_note_count += 1
-            if len(candidates) < MAX_LLM_CANDIDATES * 3:
-                candidates.append(
-                    {
-                        "candidate_id": f"tb-{row_idx}",
-                        "file": tb_path.name,
-                        "sheet": ws.title,
-                        "location": f"B{row_idx}",
-                        "issue_type": "TB/BKD 科目列示差异",
-                        "account_name": account,
-                        "amount": amount,
-                        "reason": f"TB 中存在 {account}，BKD 中未精确匹配同名科目。",
-                        "evidence_summary": f"TB 行 {row_idx}：科目={account}，本年累计借方={amount}",
-                    }
-                )
-    llm_notes, _ = llm_notes_from_candidates(
-        candidates=candidates,
-        config=llm_config,
-        task="判断 TB 与销售费用/管理费用 BKD 的科目列示差异是否需要形成审计 Review Note。",
-        default_source="DeepSeek + 科目余额表/BKD 候选证据",
-    )
-    notes.extend(llm_notes)
-    return notes
-
-
-def review_general_ledger(gl_path: Path | None, main_wb, main_path: Path, llm_config: LLMConfig | None = None) -> list[ReviewNote]:
-    if not gl_path or not gl_path.exists():
-        return []  # 用户未上传，静默跳过
-
-    wb = load_workbook(gl_path)
-    ws = wb[wb.sheetnames[0]]
-    notes: list[ReviewNote] = []
-    candidates: list[dict[str, object]] = []
-    rule_note_count = 0
-    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-        summary = cell_text(row[5] if len(row) > 5 else None)
-        account = cell_text(row[7] if len(row) > 7 else None)
-        full_account = cell_text(row[8] if len(row) > 8 else None)
-        amount = row[11] if len(row) > 11 else row[10] if len(row) > 10 else None
-        period = row[2] if len(row) > 2 else None
-        text = f"{summary} {account} {full_account}"
-        if not any(keyword in text for keyword in GL_KEYWORDS):
-            continue
-        # 只对销售费用/管理费用类科目的分录生成 Review Note
-        is_expense_account = ("销售费用" in (full_account or "") or "管理费用" in (full_account or "")
-                              or "销售费用" in (account or "") or "管理费用" in (account or ""))
-        evidence = f"序时账行 {row_idx}：期间={period}，摘要={summary}，科目={full_account or account}，金额={amount}"
-        if is_expense_account and rule_note_count < 10:
-            notes.append(
-                note(
-                    "Medium",
-                    gl_path,
-                    ws.title,
-                    f"F{row_idx}:I{row_idx}",
-                    "序时账特殊费用线索",
-                    f"序时账发现可能需要进一步关注的费用线索：摘要“{summary}”，科目“{full_account or account}”。",
-                    "核对该交易是否已在 BKD 或相关专项程序中分析；如涉及法律、诉讼、咨询、中介等性质，请补充判断依据和支持性证据索引。",
-                    "序时账辅助扫描 + SOP 特殊费用",
-                    evidence_summary=evidence,
-                )
-            )
-            rule_note_count += 1
-        if len(candidates) < MAX_LLM_CANDIDATES * 3:
-            candidates.append(
-                {
-                    "candidate_id": f"gl-{row_idx}",
-                    "file": gl_path.name,
-                    "sheet": ws.title,
-                    "location": f"F{row_idx}:I{row_idx}",
-                    "issue_type": "序时账特殊费用线索",
-                    "period": period,
-                    "summary": summary,
-                    "account_name": full_account or account,
-                    "amount": amount,
-                    "reason": "序时账摘要或科目命中特殊费用/异常关键词。",
-                    "evidence_summary": evidence,
-                }
-            )
-    llm_notes, _ = llm_notes_from_candidates(
-        candidates=candidates,
-        config=llm_config,
-        task="判断序时账候选交易是否应触发费用底稿 Review Note，重点关注法律、诉讼、咨询、中介、赔偿、罚款、关联方、调整、暂估、冲销、补提等。",
-        default_source="DeepSeek + 序时账候选证据",
-    )
-    notes.extend(llm_notes)
-    return notes
-
-
 def make_summary(notes: list[ReviewNote], program_rows: int, checklist_rows: int) -> ReviewSummary:
     return ReviewSummary(
         total_notes=len(notes),
@@ -1146,7 +918,7 @@ def make_summary(notes: list[ReviewNote], program_rows: int, checklist_rows: int
         medium_count=sum(1 for n in notes if n.risk_level == "Medium"),
         low_count=sum(1 for n in notes if n.risk_level == "Low"),
         sheets_impacted=len({(n.file, n.sheet) for n in notes}),
-        rules_run=14,
+        rules_run=12,
         program_rows=program_rows,
         checklist_rows=checklist_rows,
     )
@@ -1158,16 +930,8 @@ def review_files(
     llm_config: LLMConfig | None = None,
 ) -> tuple[ReviewSummary, list[ReviewNote]]:
     paths = dict(DEFAULT_FILES)
-    # 当用户通过 UI 上传文件时，辅助资料默认不加载（不自动回落资料库）
-    user_upload_mode = bool(files and files.get("workpapers"))
-    if user_upload_mode:
-        paths["trial_balance"] = None
-        paths["general_ledger"] = None
     if files:
         for key, value in files.items():
-            if value is None and key in {"trial_balance", "general_ledger"}:
-                paths[key] = None
-                continue
             if not value:
                 continue
             if key == "workpapers":
@@ -1200,8 +964,6 @@ def review_files(
     else:
         notes.extend(review_missing_tod(main_path))
     notes.extend(review_missing_sheets(main_wb, main_path))
-    notes.extend(review_trial_balance(paths.get("trial_balance"), main_wb, main_path, llm_config))  # type: ignore[arg-type]
-    notes.extend(review_general_ledger(paths.get("general_ledger"), main_wb, main_path, llm_config))  # type: ignore[arg-type]
 
     program_rows = read_program_rows(Path(paths["program_doc"]))
     checklist_rows = read_review_checklist_rows(Path(paths["sop_workbook"]))

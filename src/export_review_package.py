@@ -359,9 +359,6 @@ def export_review_package(
     paths = dict(DEFAULT_FILES)
     if files:
         for key, value in files.items():
-            if value is None and key in {"trial_balance", "general_ledger"}:
-                paths[key] = None
-                continue
             if not value:
                 continue
             if key == "workpapers":

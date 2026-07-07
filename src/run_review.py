@@ -21,8 +21,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--main-workpaper", type=Path, default=DEFAULT_FILES["main_workpaper"])
     parser.add_argument("--tod-workpaper", type=Path, default=DEFAULT_FILES["tod_workpaper"])
-    parser.add_argument("--trial-balance", type=Path, default=DEFAULT_FILES["trial_balance"])
-    parser.add_argument("--general-ledger", type=Path, default=DEFAULT_FILES["general_ledger"])
     parser.add_argument("--program-doc", type=Path, default=DEFAULT_FILES["program_doc"])
     parser.add_argument("--sop-workbook", type=Path, default=DEFAULT_FILES["sop_workbook"])
     parser.add_argument("--enable-llm", action="store_true", help="启用 DeepSeek 辅助判断。")
@@ -39,8 +37,6 @@ def main() -> int:
         "workpapers": args.workpapers,
         "main_workpaper": args.main_workpaper,
         "tod_workpaper": args.tod_workpaper,
-        "trial_balance": args.trial_balance,
-        "general_ledger": args.general_ledger,
         "program_doc": args.program_doc,
         "sop_workbook": args.sop_workbook,
     }
