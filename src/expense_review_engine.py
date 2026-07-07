@@ -531,7 +531,7 @@ def review_tod(wb, file: Path) -> list[ReviewNote]:
     total_pool_sheets = [s for s in visible_sheets if "总样本池" in s]
     reduced_pool_sheets = [s for s in visible_sheets if "剔除后样本池" in s]
     skywind_sheets = [s for s in visible_sheets if "Skywind" in s or "抽样工具输出" in s]
-    test_sheets = [s for s in visible_sheets if "测试" in s or "明细" in s or "TOD" in s or "样本" in s]
+    test_sheets = [s for s in visible_sheets if ("测试" in s or "明细" in s or "TOD" in s or "样本" in s) and "样本池" not in s and "抽样" not in s]
 
     if not total_pool_sheets:
         notes.append(
@@ -673,11 +673,17 @@ def llm_notes_from_candidates(
     config: LLMConfig | None,
     task: str,
     default_source: str,
-) -> list[ReviewNote]:
+) -> tuple[list[ReviewNote], dict]:
+    """返回 (notes, llm_status)。
+
+    llm_status 格式: {"ok": bool, "status": str, "candidates_submitted": int}
+    失败信息不再混入 Review Notes，由调用方在 UI 中单独展示。
+    """
+    base_status = {"ok": False, "status": "LLM not called", "candidates_submitted": len(candidates)}
     if not config or not config.is_available or not candidates:
-        return []
+        return [], base_status
     selected = candidates[:MAX_LLM_CANDIDATES]
-    judgements, status = call_deepseek_json(config=config, task=task, candidates=selected)
+    judgements, api_status = call_deepseek_json(config=config, task=task, candidates=selected)
     by_id = {str(item.get("candidate_id")): item for item in judgements}
     notes: list[ReviewNote] = []
     for candidate in selected:
@@ -709,23 +715,30 @@ def llm_notes_from_candidates(
                 evidence_summary=cell_text(candidate.get("evidence_summary")),
             )
         )
-    if not notes and status != "LLM ok":
-        notes.append(
-            note(
-                "Low",
-                Path(selected[0].get("file", "LLM") or "LLM"),
-                "LLM",
-                "API",
-                "LLM 辅助判断未完成",
-                f"已完成本地规则检查，但 DeepSeek 辅助判断未成功：{status}",
-                "可检查 API Key、网络或模型配置；规则结果不受影响。",
-                default_source,
-                judge_method="Rule",
-                confidence="",
-                evidence_summary="LLM 调用失败，已降级为规则结果。",
-            )
-        )
-    return notes
+    llm_ok = api_status == "LLM ok"
+    return notes, {
+        "ok": llm_ok,
+        "status": api_status,
+        "candidates_submitted": len(selected),
+        "notes_from_llm": len(notes),
+    }
+
+
+def _is_expense_parent_account(account: str) -> bool:
+    """判断一个科目是否为费用类的父级汇总科目（非叶子科目）。
+
+    TB 中父级科目如"销售费用"、"管理费用"仅作为汇总行，
+    BKD 中通常只列示明细科目，精确匹配会导致误报。
+    """
+    clean = account.strip().replace(" ", "")
+    # 如果科目名称正好是"销售费用"或"管理费用"（不含下级），则为父级
+    if clean in {"销售费用", "管理费用"}:
+        return True
+    # 如果包含分隔符(_、-、/)则大概率是叶子科目
+    if any(sep in clean for sep in ("_", "-", "/", "（")):
+        return False
+    # 其他情况：判断是否有明显的明细后缀
+    return len(clean) <= 6  # "销售费用_xxx" > 6 个字
 
 
 def review_trial_balance(tb_path: Path | None, main_wb, main_path: Path, llm_config: LLMConfig | None = None) -> list[ReviewNote]:
@@ -752,6 +765,24 @@ def review_trial_balance(tb_path: Path | None, main_wb, main_path: Path, llm_con
     for row_idx, row in enumerate(ws.iter_rows(min_row=3, values_only=True), start=3):
         account = cell_text(row[1] if len(row) > 1 else None)
         if not account or ("销售费用" not in account and "管理费用" not in account):
+            continue
+        # 父级汇总科目不直接报 Medium，仅进入候选列表供 LLM 辅助判断
+        is_parent = _is_expense_parent_account(account)
+        if is_parent:
+            if len(candidates) < MAX_LLM_CANDIDATES * 3:
+                candidates.append(
+                    {
+                        "candidate_id": f"tb-{row_idx}",
+                        "file": tb_path.name,
+                        "sheet": ws.title,
+                        "location": f"B{row_idx}",
+                        "issue_type": "TB/BKD 科目列示差异",
+                        "account_name": account,
+                        "amount": row[8] if len(row) > 8 else None,
+                        "reason": f"TB 中存在汇总科目 {account}，BKD 中未精确匹配同名科目（可能为父级汇总行）。",
+                        "evidence_summary": f"TB 行 {row_idx}：科目={account}（父级汇总），本年累计借方={row[8] if len(row) > 8 else None}",
+                    }
+                )
             continue
         if account not in bkd_accounts:
             amount = row[8] if len(row) > 8 else None
@@ -784,14 +815,13 @@ def review_trial_balance(tb_path: Path | None, main_wb, main_path: Path, llm_con
                         "evidence_summary": f"TB 行 {row_idx}：科目={account}，本年累计借方={amount}",
                     }
                 )
-    notes.extend(
-        llm_notes_from_candidates(
-            candidates=candidates,
-            config=llm_config,
-            task="判断 TB 与销售费用/管理费用 BKD 的科目列示差异是否需要形成审计 Review Note。",
-            default_source="DeepSeek + 科目余额表/BKD 候选证据",
-        )
+    llm_notes, _ = llm_notes_from_candidates(
+        candidates=candidates,
+        config=llm_config,
+        task="判断 TB 与销售费用/管理费用 BKD 的科目列示差异是否需要形成审计 Review Note。",
+        default_source="DeepSeek + 科目余额表/BKD 候选证据",
     )
+    notes.extend(llm_notes)
     return notes
 
 
@@ -824,8 +854,11 @@ def review_general_ledger(gl_path: Path | None, main_wb, main_path: Path, llm_co
         text = f"{summary} {account} {full_account}"
         if not any(keyword in text for keyword in GL_KEYWORDS):
             continue
+        # 只对销售费用/管理费用类科目的分录生成 Review Note
+        is_expense_account = ("销售费用" in (full_account or "") or "管理费用" in (full_account or "")
+                              or "销售费用" in (account or "") or "管理费用" in (account or ""))
         evidence = f"序时账行 {row_idx}：期间={period}，摘要={summary}，科目={full_account or account}，金额={amount}"
-        if rule_note_count < 10:
+        if is_expense_account and rule_note_count < 10:
             notes.append(
                 note(
                     "Medium",
@@ -856,14 +889,13 @@ def review_general_ledger(gl_path: Path | None, main_wb, main_path: Path, llm_co
                     "evidence_summary": evidence,
                 }
             )
-    notes.extend(
-        llm_notes_from_candidates(
-            candidates=candidates,
-            config=llm_config,
-            task="判断序时账候选交易是否应触发费用底稿 Review Note，重点关注法律、诉讼、咨询、中介、赔偿、罚款、关联方、调整、暂估、冲销、补提等。",
-            default_source="DeepSeek + 序时账候选证据",
-        )
+    llm_notes, _ = llm_notes_from_candidates(
+        candidates=candidates,
+        config=llm_config,
+        task="判断序时账候选交易是否应触发费用底稿 Review Note，重点关注法律、诉讼、咨询、中介、赔偿、罚款、关联方、调整、暂估、冲销、补提等。",
+        default_source="DeepSeek + 序时账候选证据",
     )
+    notes.extend(llm_notes)
     return notes
 
 
