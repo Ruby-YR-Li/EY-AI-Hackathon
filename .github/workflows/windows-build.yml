@@ -7,6 +7,7 @@ on:
       - main
       - "codex/**"
       - "macbook兼容版"
+      - "Ruby"
 
 jobs:
   build-windows-release:
